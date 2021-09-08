@@ -32,26 +32,30 @@ const fs = require('fs')
 function readFile(path) {
   return new Promise((resolve, reject) => {
     fs.readFile(path, 'utf8', (err, data) => {
-      if (err) return reject(err)
+      if (err) {
+        return reject(err)
+      }
       resolve(data)
     })
   })
 }
 
-readFile('./source/a.txt')
-  .then(
-    (value) => {
-      return readFile(value)
-    },
-    (reason) => {
-      console.log(reason)
-    }
-  )
-  .then(
-    (value) => {
-      console.log(value)
-    },
-    (reason) => {
-      console.log(reason)
-    }
-  )
+let p = readFile('./source/a.txt').then(
+  (value) => {
+    return readFile(value)
+  },
+  (reason) => {
+    console.log(reason)
+  }
+)
+
+p.then(
+  (value) => {
+    console.log('sx')
+    console.log(value)
+  },
+  (reason) => {
+    console.log('x')
+    console.log(reason)
+  }
+)

@@ -1,5 +1,3 @@
-const Promise = require('./promise1')
-
 const PENDING = 'PENDING'
 const FULFILLED = 'FULFILLED'
 const REJECTED = 'REJECTED'
@@ -9,7 +7,6 @@ function resolvePromise(promise2, x, resolve, reject) {
   if (promise2 === x) {
     return reject(new Error('错误'))
   }
-
   // 如果传入一个promise，并且可能是别人写的promise
   if ((typeof x === 'object' && x !== null) || typeof x === 'function') {
     // promise一旦改变状态，将不能再次改变，为了防止别人的Promise不遵守这个规范，这里设置一个限制
@@ -69,7 +66,7 @@ class promise {
     }
     const reject = (reason) => {
       if (this.state == PENDING) {
-        this.reason = this.reason
+        this.reason = reason
         this.state = REJECTED
         this.rejectCallback.forEach((fn) => fn())
       }

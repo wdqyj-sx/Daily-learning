@@ -1,5 +1,7 @@
 # Daily learning
  * 记录一下每日学习的笔记，投资自己
+
+    ## [个人博客](https://wdqyj-sx.github.io/)
  ## node
   * 记录node的学习历程
   ### 高阶函数(2021-8-30)
