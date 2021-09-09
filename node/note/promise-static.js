@@ -130,6 +130,55 @@ class Promise {
     })
     return promise2
   }
+  static resolve = (value) => {
+    return new Promise((resolve, reject) => {
+      resolve(value)
+    })
+  }
+  static reject = (reason) => {
+    return new Promise((resolve, reject) => {
+      reject(reason)
+    })
+  }
+
+  static all = (promises) => {
+    return new Promise((resolve, reject) => {
+      let timer = 0
+      let result = []
+      const processSuccess = (index, val) => {
+        result[index] = val
+        if (++timer === promises.length) {
+          resolve(result)
+        }
+      }
+      for (let i = 0; i < promises.length; ++i) {
+        let p = promises[i]
+        if (p && typeof p.then === 'function') {
+          p.then((data) => {
+            processSuccess(i, data)
+          }, reject)
+        } else {
+          processSuccess(i, p)
+        }
+      }
+    })
+  }
+
+  catch(errFn) {
+    return this.then(null, errFn)
+  }
+  finally(callback) {
+    return this.then(
+      (value) => {
+        return Promise.resolve(callback()).then(() => value)
+      },
+      (err) => {
+        return Promise.resolve(callback()).then(() => {
+          throw err
+        })
+      }
+    )
+  }
 }
 
 module.exports = Promise
