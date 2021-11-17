@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <style>
+        *{
+            margin: 0;
+            padding: 0;
+        }
+        .header , .footer{
+            height: 50px;
+            background-color: aqua;
+        }
+        .center,.left,.right{
+            float: left;
+            height: 200px;
+        }
+        .center {
+            width: 100%;
+            background-color: blueviolet;
+        }
+        .left {
+            position: relative;
+            width: 350px;
+            margin-left: -100%;
+            background-color: brown;
+            right: 350px;
+        }
+        .right {
+            width: 200px;
+            margin-right: -200px;
+            background-color: cadetblue;
+        }
+        .footer {
+            clear: both;
+        }
+        .container {
+            padding-left: 350px;
+            padding-right: 200px;
+        }
+    </style>
+</head>
+<body>
+    <div class="header"></div>
+    <div class="container">
+        <div class="center"></div>
+        <div class="left"></div>
+        <div class="right"></div>
+    </div>
+    <div class="footer"></div>
+</body>
+</html>
