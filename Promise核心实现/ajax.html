@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+    <script>
+        //创建XMLHttpRequest对象,发送一个请求
+        let request = new XMLHttpRequest()
+        //收到响应
+        request.onreadystatechange = function(){
+            //判断响应码
+            // 0 未初始化
+            // 1 已建立服务器连接
+            // 2 请求已接受
+            // 3 正在处理请求
+            // 4 请求已完成并且响应已准备好
+            if(request.readyState === 4){
+                //检测http响应码判断ajax是否成功
+                if(request.status === 200){
+                    //成功，拿到数据
+                    return success(request.responseText)
+                }else {
+                    return fail(request.status)
+                }
+            }
+        }
+        // 声明接到响应后要干什么
+        request.open('get',url)
+        request.send()
+    </script>
+</body>
+</html>
