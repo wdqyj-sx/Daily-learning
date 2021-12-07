@@ -108,6 +108,7 @@ class myPromise {
         return p
 
     }
+    
     //静态方法 all的实现
     static all(arr){
         let index =0;
@@ -145,8 +146,21 @@ class myPromise {
         })
     }
     // catch实现
-    static catch(errFn){
+     catch(errFn){
        return this.then(null,errFn)
+    }
+    // finally方法实现
+    // 传入一个回调并执行，返回一个promise并且可以执行原来promise的值
+    finally(callback){
+        //返回一个promise
+        return this.then(value => {
+            //执行回调，并把原来promise值传入新的promise
+          return  myPromise.resolve(callback()).then(()=>value)
+        },reason=>{
+            return myPromise.resolve(callback()).then(()=>{
+                throw reason
+            })
+        })
     }
 }
 

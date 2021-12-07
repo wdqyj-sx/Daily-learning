@@ -1,11 +1,14 @@
 const myPromise = require("./myPromise")
 
-myPromise.all([1,2,new myPromise((resolve,reject)=>{
-   resolve('sxx')
-}),'hj'])
-.then(value=>{
+new myPromise((resolve,reject)=>{
+    resolve('sx')
+}).finally(()=>{
+    setTimeout(() => {
+        console.log('sxx')
+    }, 1000);
+}).then((value=>{
     console.log(value)
-},reason=>{
+}),reason=>{
     console.log(reason)
 })
    
