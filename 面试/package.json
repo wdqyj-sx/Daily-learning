@@ -1,0 +1,9 @@
+{
+  "name": "ts",
+  "version": "1",
+  "main": "index.js",
+  "license": "MIT",
+  "devDependencies": {
+    "typescript": "^4.5.4"
+  }
+}

@@ -1,0 +1,1 @@
+console.log('123s sc '.replace(/\s+/g,''))
