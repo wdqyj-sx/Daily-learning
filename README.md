@@ -1,7 +1,7 @@
 # Daily learning
  * 记录一下每日学习的笔记，投资自己
 
-    ## [个人博客](https://wdqyj-sx.github.io/)
+    ## [博客地址](https://blog.csdn.net/wenyeqv?type=blog)
  ## node
   * 记录node的学习历程
   ### 高阶函数(2021-8-30)
@@ -22,3 +22,9 @@
         - then方法返回一个普通值的话，会作为外层then的成功结果执行
         - then方法执行出错，会作为外层then的失败结果执行
         - then方法返回一个promise对象，则根据Promise中的状态来决定走成功还是走失败
+ ## 函数式编程
+  ### 组合函数
+  ### 函子
+ ## typescript
+ ## js性能优化
+ ## vue基础

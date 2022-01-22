@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>疫情监控平台</title>
+    <link rel="stylesheet" href="./node_modules/layui/src/css/layui.css">
+    <link rel="stylesheet" href="./public/css/index.css">
+
+</head>
+<body>
+   <div class="layui-container wrap">
+       <div class="layui-row" style="height: 10vh;" >
+            <div class="layui-col-ld12 header" >
+                <h1>疫情数据展示</h1>
+            </div>
+       </div>
+       <div class="layui-row container" style="height: 90vh;">
+        <div class="layui-col-md3 container-left">
+            <div class="layui-row data-down-wrap">
+                <div class="layui-col-md12 data-down-container">
+                    <div class="layui-row yiqing"></div>
+                    <div class="layui-row zhishu"></div>
+                </div>
+               
+
+            </div>
+            <div class="layui-row showChart-wrap" ></div>
+
+        </div>
+        <div class="layui-col-md9 container-right"></div>
+
+        
+    </div>
+   </div>
+    <script src="./node_modules/layui/src/layui.js"></script>
+</body>
+</html>
