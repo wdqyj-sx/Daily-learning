@@ -16,8 +16,8 @@ domImgHover.src ='../img/mapbg.png'
         maskColor: '#2957A2',
         textColor: '#fff',
     });
-    console.log(domImg)
-    console.log(domImgHover)
+    // console.log(domImg)
+    // console.log(domImgHover)
     var mapDate = [
         {
             name: '新疆',
