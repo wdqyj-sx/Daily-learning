@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <style>
+        .sad {
+            background-color: aqua;
+        }
+        .happy {
+            background-color: bisque;
+        }
+        .size {
+            width: 400px;
+            height: 200px;
+        }
+        .shape1 {
+            border-radius: 50%;
+        }
+        .shape2 {
+            border: 5px solid red;
+        }
+        .shape3 {
+            background-color: blanchedalmond;
+        }
+    </style>
+    <script src="../js/vue.js"></script>
+</head>
+<body>
+    <div id="root">
+        <div class="size" :class="shape" @click="change">{{name}}</div>
+        <div class="size" :class="all2" @click="change2">haha</div>
+    </div>
+    <script>
+        new Vue({
+        el:'#root',
+        data:{
+            name:'sx',
+            shape:'sad',
+            all1:['shape1','shape2','shape3'],
+            all2:{
+                shape1:false,
+                shape2:false,
+                shape3:true,
+
+
+            }
+        },
+        methods:{
+            change(){
+                // console.log(this)
+                this.shape = 'happy'
+            },
+            change2(){
+                let id = Math.floor(Math.random()*3)
+                Object.keys(this.all2).forEach((item,index)=>{
+                    if(index === id){
+                        this.all2[item] = true
+                    }
+                    else {
+                        this.all2[item] = false
+                    }
+                })
+            }
+        }
+        })
+    </script>
+</body>
+</html>
