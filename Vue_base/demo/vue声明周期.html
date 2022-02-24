@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <script src="../js/vue.js"></script>
+</head>
+<body>
+    <div id="root">
+        <span>{{n}}</span>
+        <button @click="n++">点击</button>
+    </div>
+    <script>
+        new Vue({
+        el:'#root',
+        data:{
+            n:1
+        },
+        beforeCreate(){
+            console.log("beforeCreate")
+            // console.log(this)
+            // debugger;
+        },
+        created(){
+            console.log("created")
+            // console.log(this)
+            // debugger
+        },
+        beforeMount(){
+            console.log("beforeMount")
+            // console.log(this)
+            // debugger
+        },
+        mounted(){
+            console.log("mounted")
+        },
+        beforeUpdate(){
+           console.log("beforeUpdate")
+           console.log(this)
+           debugger 
+        }
+        })
+    </script>
+</body>
+</html>

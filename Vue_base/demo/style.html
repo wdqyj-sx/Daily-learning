@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <script src="../js/vue.js"></script>
+</head>
+<body>
+    <div id="root">
+        {{name}}
+        <div :style="{width:'100px', height:size+'px',backgroundColor:'red'}"></div>
+        <div :style="sty"></div>
+    </div>
+<script>
+    new Vue({
+    el:'#root',
+    data:{
+        size:50,
+        name:'sx',
+        sty:[
+            {
+                with:'200px',
+                height:'100px'
+            },{
+                backgroundColor:'red'
+            }
+        ]
+    }
+    })
+</script>
+</body>
+</html>

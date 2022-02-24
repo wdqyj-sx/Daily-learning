@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <script src="../js/vue.js"></script>
+    <script src="../../node_modules/dayjs/dayjs.min.js"></script>
+</head>
+<body>
+    <div id="root">
+        <span>{{nowTime | timeFormatter}}</span>
+    </div>
+    <script>
+        new Vue({
+        el:'#root',
+        data:{
+               nowTime:new Date() 
+            },
+            filters:{
+                timeFormatter(value){
+                    return dayjs(value).format('YYYY年MM月DD日 hh:mm:ss')
+                }
+            }
+        })
+    </script>
+</body>
+</html>

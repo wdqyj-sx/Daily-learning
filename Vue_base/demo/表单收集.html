@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <script src="../js/vue.js"></script>
+</head>
+<body>
+    <div id="root">
+        <form @submit.prevent="pushForm">
+            <legend>姓名</legend>
+            <input type="text" v-model.trim="person.name">
+            <legend>年龄</legend>
+            <input type="number" name="" id="" v-model.number="person.age">
+            <legend>性别</legend>
+            <label for="">男</label> <input type="radio" v-model="person.sex" value="male">
+            <label for="">女</label> <input type="radio" v-model="person.sex" value="female">
+            <legend>爱好</legend>
+            <input type="checkbox" v-model="person.hobby" value="smoke"><label for="">抽烟</label>
+            <input type="checkbox" v-model="person.hobby" value="drink"><label for="">喝酒</label>
+            <input type="checkbox" v-model="person.hobby" value="head"><label for="">烫头</label>
+            <legend>地址</legend>
+            <select name="" id="" v-model="person.city">
+                 <option value="">请选择地区</option>
+                 <option value="beijing">北京</option>
+                 <option value="shanghai">上海</option>
+                 <option value="wuhan">武汉</option>
+
+            </select>
+            <legend>其它信息</legend>
+            <textarea name="" id="" cols="30" rows="10" v-model.lazy="person.textarea">  </textarea>
+            <input type="checkbox" v-model="person.agree">阅读并接受<a href="">《用户协议》</a>
+            <button >提交</button>
+        </form>
+    </div>
+    <script>
+        new Vue({
+        el:'#root',
+        data:{
+            person:{
+                name:'',
+            age:'',
+            sex:'',
+            hobby:[],
+            city:'',
+            textarea:'',
+            agree:''
+            }
+        },
+        methods:{
+            pushForm(){
+                console.log(this.person)
+            }
+        }
+        })
+    </script>
+</body>
+</html>

@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <script src="../js/vue.js"></script>
+</head>
+<body>
+    <div id="root">
+        <button @click="show">点我</button>
+        <span v-show="n===1">1</span>
+        <span v-show="n===2">2</span>
+        <span v-show="n===3">3</span>
+        <span v-if="n===1">1</span>
+        <span v-else-if="n===2">2</span>
+        <span v-else="n===3">3</span>
+
+    </div>
+    <script>
+        new Vue({
+        el:'#root',
+        data:{
+            n:0
+        },
+        methods:{
+            show(){
+                this.n++
+            }
+        }
+        })
+    </script>
+</body>
+</html>
