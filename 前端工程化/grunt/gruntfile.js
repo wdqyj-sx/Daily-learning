@@ -21,13 +21,31 @@ module.exports = grunt =>{
           }
       },
       babel:{
+          options:{
+            //添加babel的预设
+            presets:['@babel/preset-env']
+          },
           main:{
               files:{
                   //
+                  'dist/js/index.js':'js/index.js'
               }
+          }
+      },
+      watch:{
+          js:{
+              //监视的文件
+              files:['js/*.js'],
+            //文件改变执行的目标
+                tasks:['babel']
+          },
+          css:{
+              files:['sass/*.scss'],
+              tasks:['sass']
           }
       }
     })
     //自动加载所有插件
    loadGruntTasks(grunt)
+   grunt.registerTask('default',['sass','babel','watch'])
 }
