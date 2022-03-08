@@ -6,7 +6,7 @@ const bs = require("browser-sync")
 const plugins = loadPlugins()
 
 const clean = ()=>{
-    return del(['dist'])
+    return del(['dist','temp'])
 }
   
 const style = ()=>{
@@ -14,12 +14,12 @@ const style = ()=>{
     return src('src/assets/styles/*.scss',{base:'src'})
     //将sass文件转换,且样式的括号打开
     .pipe(sass({outputStyle:'expanded'}))
-    .pipe(dest('dist'))
+    .pipe(dest('temp'))
 }
 const script = ()=>{
     return src("src/assets/scripts/*.js",{base:'src'})
     .pipe(plugins.babel({presets:['@babel/preset-env']}))
-    .pipe(dest('dist'))
+    .pipe(dest('temp'))
 }
 
 const data = {
@@ -66,7 +66,7 @@ const page = ()=>{
     return src("src/**/*.html",{base:'src'})
     //渲染模板，传入数据
     .pipe(plugins.swig({data}))
-    .pipe(dest('dist'))
+    .pipe(dest('temp'))
     
 }
 
@@ -104,7 +104,7 @@ const serve = ()=>{
         files:'dist/**',
         server:{
               //指定网站根目录
-            baseDir:['dist','src','public'],
+            baseDir:['temp','src','public'],
             routes:{
                 //dist中html文件引入node_modules中的模块，这里告诉浏览器如果html中有/node_modules，就直接去根目录下的node_modules中找，后面会将node_modules中需要的文件提取到dist中
                 '/node_modules':'node_modules'
@@ -114,13 +114,21 @@ const serve = ()=>{
     })
 }
 const useref = ()=>{
-    return src("dist/*.html",{base:'dist'})
+    return src("temp/*.html",{base:'temp'})
     //搜索的位置，本项目css文件，一般在dist,node_modules中
-    .pipe(plugins.useref({ searchPath:['dist','.'] }))
+    .pipe(plugins.useref({ searchPath:['temp','.'] }))
+    //判断是否.js结尾文件并压缩
+    .pipe(plugins.if(/\.js$/,plugins.uglify()))
+    .pipe(plugins.if(/\.css$/,plugins.cleanCss()))
+    .pipe(plugins.if(/\.html$/,plugins.htmlmin({
+        collapseWhitespace:true, //压缩空格
+        minifyCSS:true,//压缩行内样式
+        minifyJS:true //压缩内部js
+    })))
     .pipe(dest('dist'))
 }
 const compile = parallel(style,script,page)
-const build = series(clean,parallel(compile,extra,image,font))
+const build = series(clean,parallel( series(compile,useref), extra,image,font))
 const develop = series(compile,serve) 
 module.exports = {
     compile,
