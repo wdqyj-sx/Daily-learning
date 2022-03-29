@@ -1,0 +1,19 @@
+{
+  "name": "sx",
+  "version": "1.0.0",
+  "description": "",
+  "main": "lib/index.js",
+  "bin": "bin/cli.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "axios": "^0.26.1",
+    "commander": "^9.1.0",
+    "inquirer": "^8.2.2",
+    "ora": "^5.1.0"
+  }
+}
