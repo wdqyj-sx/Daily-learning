@@ -2,6 +2,7 @@
 
 let {program} = require("commander")
 let {version} = require("../package.json")
+let mainFn = require("..")
 
 let  actionMap = {
     create:{
@@ -24,6 +25,11 @@ Reflect.ownKeys(actionMap).forEach(aname=>{
         .command(aname)
         .alias(actionMap[aname].alias)
         .description(actionMap[aname].description)
+        .action(()=>{
+            //获取输出内容
+            // console.log(process.argv.slice(3))
+            mainFn(aname,process.argv.slice(3))
+        })
 })
 
 program.on('--help',()=>{
