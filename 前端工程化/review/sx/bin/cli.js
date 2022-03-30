@@ -2,7 +2,7 @@
 
 const {program} = require("commander")
 const {version} = require("../package.json")
-
+const mainFn = require("..")
 const actionMap = {
     // 指令名为键，指令的相关配置作为值
     'create':{
@@ -21,7 +21,7 @@ Reflect.ownKeys(actionMap).forEach(aname=>{
         .description(actionMap[aname].description)//绑定描述
         .action(()=>{
             //指令出发后执行什么操作
-            console.log(aname)
+            mainFn(aname,process.argv.slice(3))
         })
     })
 
