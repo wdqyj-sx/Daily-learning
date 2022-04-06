@@ -1,0 +1,23 @@
+{
+  "name": "gu-cli",
+  "version": "1.0.0",
+  "main": "index.js",
+  "license": "MIT",
+  "devDependencies": {
+    "@babel/core": "^7.17.8",
+    "@babel/preset-env": "^7.16.11",
+    "autoprefixer": "^10.4.4",
+    "del": "^6.0.0",
+    "gulp": "^4.0.2",
+    "gulp-babel": "^8.0.0",
+    "gulp-imagemin": "^7.0.0",
+    "gulp-load-plugins": "^2.0.7",
+    "gulp-postcss": "^9.0.1",
+    "gulp-swig": "^0.9.1",
+    "postcss": "^8.4.12"
+  },
+  "dependencies": {
+    "gulp-sass": "^5.1.0",
+    "sass": "^1.49.11"
+  }
+}
