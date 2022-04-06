@@ -5,6 +5,7 @@ const gulpLoadPlugins = require("gulp-load-plugins")
 const babel = require("gulp-babel")
 const del = require('del')
 // const bs = require('browser')
+const bs = require("browser-sync")
 
 const plugins = gulpLoadPlugins()
 // console.log(plugins)
@@ -59,36 +60,51 @@ const extra = () => {
 
 //实现浏览器热更新及文件监视
 const devServe = () => {
+    //监听
     watch('src/assets/styles/*.scss', style)
-    watch('src/assets/scripts/*.js', script)
-    watch('src/**/*.html', page)
-    //以下文件改动不需要调用构建命令，刷新浏览器即可
+    watch("src/assets/scripts/*.js", script)
+    watch("src/**/*.html", page)
+    //下面的资源文件监听，服务器执行刷新命令即可
     watch([
-        'src/assets/fonts/**',
-        'src/assets/images/**',
-        'public/**'
+        "src/assets/images/**",
+        "src/assets/fonts/**",
+        "public/**"
     ], bs.reload)
+
     bs.init({
-        notift: false,
-        prot: 2080,
-        //监听的文件
+        notify: false,//是否提示
+        port: 2080,
+        //监听的文件，文件改变，浏览器刷新
         files: 'dist/**',
         server: {
-            //查找的目录
+            //指定网站根目录
             baseDir: ['dist', 'src', 'public'],
-            //路由查找规则
-            routers: {
+            routes: {
+                //dist中html文件引入node_modules中的模块，这里告诉浏览器如果html中有/node_modules，就直接去根目录下的node_modules中找，后面会将node_modules中需要的文件提取到dist中
                 '/node_modules': 'node_modules'
             }
         }
+
     })
+
+}
+const useref = ()=>{
+    return src("dist/*.html",{base:'dist'})
+    //搜索的位置，本项目css文件，一般在dist,node_modules中
+    .pipe(plugins.useref({ searchPath:['dist','.'] }))
+    .pipe(dest('dist'))
+ 
 }
 const clean = () => del(['dist'])
 
 const compile = parallel(style, script, page)
+const serve = series(compile, devServe)
+
 module.exports = {
     compile,
     clean,
-    extra
+    extra,
+    devServe,
+    useref
 }
 
