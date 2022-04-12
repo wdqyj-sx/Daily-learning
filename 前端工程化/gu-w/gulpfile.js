@@ -1,4 +1,4 @@
-const {src,dest} = require("gulp")
+const {src,dest,series,parallel} = require("gulp")
 //引入自动加载插件
 const $ = require("gulp-load-plugins")()
 // 引入sass插件
@@ -8,7 +8,7 @@ const autoprefixer = require('autoprefixer');
 //模块删除
 const del = require("del")
 const filePath = require("./gulpConfig")
-
+const bs = require('browser-sync')
 
 //删除文件
 const clean =()=> del([filePath.build.dist])
@@ -40,6 +40,18 @@ const scripts = ()=>{
     }))
     .pipe(dest(filePath.build.dist))
 }
+let option = {}
+//处理html
+const page = ()=>{
+    return src(filePath.build.path.pages,{
+        ignore:['layouts','partials'],
+        base:filePath.build.src,
+        cwd:filePath.build.src
+    })
+    .pipe($.swig(option))
+    .pipe(dest('dist'))
+
+}
 //压缩image,font
 const image = ()=>{
     return src(filePath.build.path.images,{
@@ -50,9 +62,13 @@ const image = ()=>{
     .pipe(dest(filePath.build.dist))
 }
 
+const compile = series(style,scripts,page)
+
 module.exports = {
     style,
     clean,
     scripts,
-    image
+    image,
+    page,
+    compile
 }
