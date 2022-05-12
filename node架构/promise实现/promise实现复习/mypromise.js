@@ -2,6 +2,25 @@ const PENDING =  "PENDING"
 const REJECTED = "REJECTED"
 const FULFILLED =  "FULFILLED"
 
+function resolvePromise(promise2,x,resolve,reject){
+    if(promise2 === x){
+        return reject(new TypeError(`Chaining cycle detected for promise #<Promise> my`))
+    }
+    if((typeof x === 'object' && x!==null) || (typeof x === 'function')){
+        let called = false
+        try{
+            let then = x.then
+            if(typeof then  === 'function'){
+                 
+            }
+        }catch(e){
+            reject(e)
+        }
+    }else {
+        reject(x)
+    }
+}
+
 class Promise{
     constructor(exector){
         this.status = PENDING
@@ -31,20 +50,48 @@ class Promise{
     }
 
     then(onFulfulled,onRejected){
-        if(this.status === FULFILLED){
-            onFulfulled(this.value)
-        }
-        if(this.status === REJECTED){
-            onRejected(this.reason)
-        }
-        if(this.status === PENDING){
-            this.onResolveCallback.push(()=>{
-                onFulfulled(this.value)
-            })
-            this.onRejectedCallback.push(()=>{
-                onRejected(this.reason)
-            })
-        }
+        let promise2 = new Promise((resolve,reject)=>{
+            if(this.status === FULFILLED){
+                setTimeout(()=>{
+                    try{
+                        let x = onFulfulled(this.value)
+                    }
+                    catch(e){
+                        reject(e)
+                    }
+                })
+            }
+            if(this.status === REJECTED){
+                setTimeout(() => {
+                    try{
+                       let x = onRejected(this.reason)    
+                    }catch(e){
+                        reject(e)
+                    }
+                });
+            }
+            if(this.status === PENDING){
+                this.onResolveCallback.push(()=>{
+                    setTimeout(() => {
+                        try{
+                            let x = onFulfulled(this.value)
+                        }catch(e){
+                            reject(e)
+                        }
+                    }); 
+                })
+                this.onRejectedCallback.push(()=>{
+                    setTimeout(()=>{
+                        try{
+                            let x = onRejected(this.reason)
+                        }catch(e){
+                            reject(e)
+                        }
+                    })
+                })
+            }
+        })
+       
     }
 }
 
