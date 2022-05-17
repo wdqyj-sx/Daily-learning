@@ -15,6 +15,10 @@
       - [promise实现](#promise实现)
     - [从generator到async](#从generator到async)
       - [迭代器](#迭代器)
+    - [浏览器事件环](#浏览器事件环)
+      - [进程与线程](#进程与线程)
+      - [事件环](#事件环)
+      - [相关习题](#相关习题)
 ## [博客地址](https://blog.csdn.net/wenyeqv?type=blog)
 ## node
   * 记录node的学习历程
@@ -816,3 +820,116 @@ baby.setState('哭')
         console.log(data)
     })
   ```
+### 浏览器事件环
+#### 进程与线程
+* 计算机分配任务是以进程来分配，进程中包含着线程
+* 浏览器是一个进程，而且是一个多进程模型（多进程好处就是一个进程挂掉不会影响其它进程）
+  * 一个tab就是一个独立的进程
+  * 浏览器默认有一个主进程，来调度其它进程（进程间的通信）
+  * 插件也有独立的进程管理
+  * gpu有绘图进程
+* 浏览器的渲染进程
+  * ui 渲染线程  负责页面渲染，布局，绘制
+  * js引擎线程 执行js代码的
+    * 这两种线程是互斥的，不能同时执行，原因是js引擎可能会操作dom，而渲染进程依赖dom
+* js是单线程的，但主要指的是主线程，在主线程执行的时候，同时会开启一下独立的线程，如：
+  * 定时器、发请求、用户事件、
+#### 事件环
+* 执行异步任务时，主线程会开辟独立的线程处理
+  * js执行顺序是先执行同步任务，执行完当前同步任务之后，开始执行异步任务，而负责调度这些任务执行的也是一个线程，叫做事件触发线程，也就是浏览器的eventLoop事件环
+* 异步任务分为宏任务和微任务
+  * 宏任务 macro-task:script脚本， ui渲染，定时器(setTimeout)， 发请求， 用户事件，messageChannel, setImmediate(ie下有，比setTimeout性能好)
+  * 微任务 micro-task： Promise.then(语言本身提供的)， queueMicrotashk  MutationObserver （异步监控dom的变化）
+* eventLoop执行流程
+  * 当前的主线程的同步任务可以看作一个最开始的宏任务
+  * 代码执行的过程的时候 会产生微任务和宏任务
+  * 当发生的宏任务时间到达的时候会被发入到宏任务队列中 (放入是回调) 宏任务只有一个队列
+  * 微任务是立刻放到队列中 （每次执行宏任务的时候会产生一个微任务队列）
+  * 当前宏任务执行完毕后，会清空本轮产生的微任务, 如果执行微任务的时候又产生了微任务，会放到当前微任务的尾部
+  * 再去扫描宏任务队列，如果有则取出第一个宏任务 ， 再去执行
+  * 每次微任务是执行一批 ， 宏任务是执行一个
+#### 相关习题
+* ```js
+    <script>
+            document.body.style.background = 'red';
+            console.log(1)
+            Promise.resolve().then(()=>{
+                console.log(2)
+                document.body.style.background = 'yellow';
+            })
+            console.log(3);
+    </script>
+  ```
+  * 渲染线程发生在微任务之后，所以是 1 3 2 yellow
+* ```js
+    <script>
+            button.addEventListener('click',()=>{
+                console.log('listener1');
+                Promise.resolve().then(()=>console.log('micro task1'))
+            })
+            button.addEventListener('click',()=>{
+                console.log('listener2');
+                Promise.resolve().then(()=>console.log('micro task2'))
+            })
+            button.click(); // click1() click2()
+    </script>
+  ```
+  * 代码自动触发，相当于同步，会先输出listener1、listener2、其次处理微任务
+* ```js
+    <button id="1">1</button>
+        <button id="2">2</button>
+
+        <script>
+            let button1 = document.getElementsByTagName("button")[0]
+            let button2 = document.getElementsByTagName("button")[1]
+
+            button1.addEventListener('click',()=>{
+                console.log('listener1');
+                Promise.resolve().then(()=>console.log('micro task1'))
+            })
+            button2.addEventListener('click',()=>{
+                console.log('listener2');
+                Promise.resolve().then(()=>console.log('micro task2'))
+            })
+            // button.click(); // click1() click2()
+    </script>
+  ```
+  * 点击执行，相当于执行两个宏任务，会先输出第一个宏任务里的同步代码listener1、在输出微任务micro task1，然后在执行第二个宏任务
+* ```js
+        <script>
+            Promise.resolve().then(() => {
+                console.log('Promise1')
+                setTimeout(() => {
+                    console.log('setTimeout2')
+                }, 0);
+            })
+            setTimeout(() => {
+                console.log('setTimeout1');
+                Promise.resolve().then(() => {
+                    console.log('Promise2')
+                })
+            }, 0);
+    </script>
+  ```
+  * 先执行完当前同步任务遗留的微任务，输出Promise1,其次按顺序执行宏任务，输出setTimeout1，再执行当前宏任务下的微任务输出Promise2,在执行输出setTimeout2
+* ```js
+    console.log(1);
+    async function async () {
+        console.log(2);
+        await console.log(3);
+        console.log(4)
+    }
+    setTimeout(() => {
+        console.log(5);
+    }, 0);
+    const promise = new Promise((resolve, reject) => {
+        console.log(6);
+        resolve(7)
+    })
+    promise.then(res => {
+        console.log(res)
+    })
+    async (); 
+    console.log(8);
+  ```
+  * 先执行同步  1、6、2、3、8在执行微任务7、4、在执行宏任务5
