@@ -1,0 +1,6 @@
+const path = require('path')
+console.log(1)
+console.log(process.cwd())
+console.log(2)
+console.log(path.resolve())
+console.log(process.platform)
