@@ -1,5 +1,4 @@
-const EventEmitter = require("events")
-// const { grep } = require("jquery")
+const EventEmitter = require("./core")
 
 function Girl(){
 
@@ -7,6 +6,9 @@ function Girl(){
 Object.setPrototypeOf(Girl.prototype,EventEmitter.prototype)
 const girl = new Girl
 
+girl.on('newListener',function(eventName){
+    console.log('sx:',eventName)
+})
 //订阅
 girl.on('失恋了',function(boy){
     console.log('哭',boy)

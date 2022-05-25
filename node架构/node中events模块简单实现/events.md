@@ -44,5 +44,69 @@
 #### events的简单实现
 * 声明一个构造函数，构造函数中有一个对象（队列），用来存储订阅
 * 该构造函数的原型上有四个方法，分别是on、emit、off、once
+```js
+function EventEmitter () {
+    this._events = {}
+}
+
+```
 * 调用on
- *  
+ * 先用on进行订阅，这里要考虑函数通过绑定原型的方式和EventEmitter类关联，然后再通过实例化这个函数来调用EventEmitter相关的原型方法，此时实例是没有_events属性的，因此要进行一次判断
+ * 属性名不是newListener，需要调用newListener方法
+ * 根据属性名依次追加行为到对应数组
+  ```js
+    EventEmitter.prototype.on = function (eventName, callback) {
+        if (!this._events) {
+            this._events = {}
+        }
+        if (eventName !== "newListener") {
+            if(this._events["newListener"]){
+                this._events["newListener"].forEach(fn=>fn(eventName))
+            }
+        }
+        this._events[eventName] = this._events[eventName] || []
+        this._events[eventName].push(callback)
+    }
+  ```
+* 调用emit
+  * 通过属性，依次遍历行为数组，调用该行为
+  ```js
+    EventEmitter.prototype.emit = function (eventName, ...args) {
+        if (!this._events) {
+            this._events = {}
+        }
+        this._events[eventName].forEach((cb) => {
+            cb(...args)
+        })
+    }
+  ```
+* 调用off 
+  * off方法对对应的属性上的行为进行取消
+  ```js
+    EventEmitter.prototype.off = function (eventName, callback) {
+        if (!this._events) {
+            this._events = {}
+        }
+        this._events[eventName] = this._events[eventName].filter(item => {
+            return item !== callback && item.l !== callback
+        })
+    }
+  ```
+* once 方法
+  * 利用高阶函数，绑定另一个函数，函数里面执行完callback后，取消该函数
+  * 该函数属性l绑定callback，这样可以通过off进行取消
+  ```js
+    EventEmitter.prototype.once = function (eventName, callback) {
+        let once = (...args) => {
+            callback(...args)
+            this.off(eventName, once)
+        }
+        once.l = callback
+        this.on(eventName, once)
+    }
+
+  ```
+* 导出
+```js
+    module.exports = EventEmitter
+```
