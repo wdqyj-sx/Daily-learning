@@ -27,6 +27,9 @@
     - [node中events模块的简单实现](#node中events模块的简单实现)
       - [events的应用](#events的应用)
       - [events的简单实现](#events的简单实现)
+    - [Vue3 环境搭建](#vue3-环境搭建)
+      - [Monorepo管理项目](#monorepo管理项目)
+      - [模拟打包流程](#模拟打包流程)
 ## [博客地址](https://blog.csdn.net/wenyeqv?type=blog)
 ## node
   * 记录node的学习历程
@@ -1245,3 +1248,151 @@ function EventEmitter () {
 ```js
     module.exports = EventEmitter
 ```
+### Vue3 环境搭建
+#### Monorepo管理项目
+> Monorepo是管理项目代码的一种方式，指在一个项目仓库管理多个模块/包，Vue3源码采用Monorepo进行管理
+  * 一个仓库可以维护多个模块。
+  * 方便版本管理何依赖管理，模块之间的引用，调用都很便捷。
+  * Vue3使用pnpm workspace实现monorepo
+    * 全局安装pnpm:npm install pnpm -g
+    * pnpm init 初始化项目
+    * 创建pnpm-wrokspace.yaml文件
+      * 告诉pnpm，文件的包都安装再packages文件夹下：
+      ```js
+        packages:
+          - 'packages/*'
+      ```
+  * 这样，基本的Monorepo环境就配置好了,创建packages文件夹,然后在里面创建两个项目文件夹，分别为reactivity、shared
+  * 安装vue,并指定安装在根目录（-w）
+    * pnpm install vue -w
+  * 安装相关模块依赖
+    * -D指开发依赖
+    * pnpm install esbuild typescript minimist -D -w
+#### 模拟打包流程
+  * 分别初始化模拟的两个项目（reactivity和shared）
+    * 并配置打包后的引用路径,package.json内容如下：
+     ```js
+        {
+        "name": "@vue/reactivity",
+        "version": "1.0.0",
+        "description": "",
+        "main": "dist/reactivity.cjs.js",
+        "module": "dist/reactivity.esm-bundler.js",
+        "scripts": {
+            "test": "echo \"Error: no test specified\" && exit 1"
+        },
+        "keywords": [],
+        "author": "",
+        "license": "ISC"
+        }
+ 
+     ```
+     ```js
+            {
+        "name": "@vue/shared",
+        "version": "1.0.0",
+        "description": "",
+        "main": "dist/shared.cjs.js",
+        "module": "dist/shared.esm-bundler.js",
+        "scripts": {
+            "test": "echo \"Error: no test specified\" && exit 1"
+        },
+        "keywords": [],
+        "author": "",
+        "license": "ISC"
+        }
+
+     ```
+  * 创建ts配置文件
+    * pnpm tsc --init
+    * 配置tsconfig.json文件
+    ```json
+    {
+    "compilerOptions": {
+        "outDir": "dist", // 输出的目录
+        "sourceMap": true, // 采用sourcemap
+        "target": "es2016", // 目标语法
+        "module": "esnext", // 模块格式
+        "moduleResolution": "node", // 模块解析方式
+        "strict": false, // 严格模式
+        "resolveJsonModule": true, // 解析json模块
+        "esModuleInterop": true, // 允许通过es6语法引入commonjs模块
+        "jsx": "preserve", // jsx 不转义
+        "lib": ["esnext", "dom"], // 支持的类库 esnext及dom,
+        "baseUrl":".",
+         "paths": {
+        "@vue/*":["packages/*/src"]
+      }
+        }
+    }
+    ```
+    * 通过配置baseUrl，可以通过"@vue"来访问package/*/src文件
+  * 配置项目内容
+    * 在shared的src文件夹下创建index.ts文件，创建检测对象的方法
+    ```ts
+        export const isObject = (value)=>{
+        return typeof value === 'object'&& value !==null
+    }
+    ```
+    * 在reactivity的src的index.ts文件中引用
+    ```ts
+    import { isObject } from "@vue/shared"
+    console.log(isObject('abc'))
+    ```
+  * 配置打包文件
+    * 根目录新建scripts/dev.js
+    * package.json添加scripts选项
+    ```json
+        "scripts": {
+        "dev":"node scripts/dev.js reactivity -f global"
+    },
+    ```
+      * 表示dev命令会运行dev.js ，并处理reactivity,global表示全局，cjs表示commonjs规范，esm表示esmodule规范
+    * 配置dev.js
+      * 引入minimist来解析参数  
+      ```js
+        const args = require("minimist")(process.argv.slice(2))
+
+        console.log(args)
+
+      ```
+      * 运行npm run dev查看输出结果为：{ _: [ 'reactivity' ], f: 'global' }
+      * 最终文件如下:
+      ```js
+            const args = require("minimist")(process.argv.slice(2))
+        const path = require('path')
+
+        //对接收的文件做处理
+        const target = args._[0] || 'reactivity'
+        const format = args.f||'global'
+        const entry = path.resolve(__dirname,`../packages/${target}/src/index.ts`);
+        //定义打包格式
+        // iife 自执行函数 global  (function(){})()  增加一个全局变量
+        // cjs  commonjs 规范
+        // esm es6Module
+        const outputFormat = format.startsWith('global')?'iife':format === 'cjs'?'cjs':'esm'
+        //出口文件
+        const outfile = path.resolve(__dirname,`../packages/${target}/dist/${target}.${format}/index.js`)
+
+        //引入打包模块
+        const {build} = require('esbuild');
+
+        build({
+            entryPoints: [entry],
+            outfile,
+            bundle: true,
+            sourcemap: true,
+            format: outputFormat,
+            // globalName,
+            platform: format === 'cjs' ? 'node' : 'browser',
+            watch: { // 监控文件变化
+                onRebuild(error) {
+                    if (!error) console.log(`rebuilt~~~~`)
+                }
+            }
+        }).then(() => {
+            console.log('watching~~~')
+        })
+
+      ```
+      * 运行npm run dev 即可打包文件
