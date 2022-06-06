@@ -27,6 +27,7 @@
     - [node中events模块的简单实现](#node中events模块的简单实现)
       - [events的应用](#events的应用)
       - [events的简单实现](#events的简单实现)
+  - [Vue3源码学习](#vue3源码学习)
     - [Vue3 环境搭建](#vue3-环境搭建)
       - [Monorepo管理项目](#monorepo管理项目)
       - [模拟打包流程](#模拟打包流程)
@@ -1248,6 +1249,7 @@ function EventEmitter () {
 ```js
     module.exports = EventEmitter
 ```
+## Vue3源码学习
 ### Vue3 环境搭建
 #### Monorepo管理项目
 > Monorepo是管理项目代码的一种方式，指在一个项目仓库管理多个模块/包，Vue3源码采用Monorepo进行管理

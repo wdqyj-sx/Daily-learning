@@ -11,8 +11,9 @@ const entry = path.resolve(__dirname,`../packages/${target}/src/index.ts`);
 // esm es6Module
 const outputFormat = format.startsWith('global')?'iife':format === 'cjs'?'cjs':'esm'
 //出口文件
-const outfile = path.resolve(__dirname,`../packages/${target}/dist/${target}.${format}/index.js`)
-
+const outfile = path.resolve(__dirname,`../packages/${target}/dist/${target}.${format}.js`)
+//打包后全局名称
+const globalName = require(path.resolve(__dirname,`../packages/${target}/package.json`)).buildOptions.name
 //引入打包模块
 const {build} = require('esbuild');
 
@@ -22,7 +23,7 @@ build({
     bundle: true,
     sourcemap: true,
     format: outputFormat,
-    // globalName,
+    globalName,
     platform: format === 'cjs' ? 'node' : 'browser',
     watch: { // 监控文件变化
         onRebuild(error) {
