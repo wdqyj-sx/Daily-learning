@@ -29,19 +29,87 @@ var VueReactivity = (() => {
     return typeof value === "object" && value !== null;
   };
 
+  // packages/reactivity/src/effect.ts
+  var activeEffect = void 0;
+  var ReactiveEffect = class {
+    constructor(fn) {
+      this.fn = fn;
+      this.active = true;
+      this.parent = null;
+      this.deps = [];
+    }
+    run() {
+      if (!this.active) {
+        return this.fn();
+      } else {
+        try {
+          this.parent = activeEffect;
+          activeEffect = this;
+          return this.fn();
+        } finally {
+          activeEffect = this.parent;
+          this.parent = null;
+        }
+      }
+    }
+  };
+  var targetMap = /* @__PURE__ */ new WeakMap();
+  function track(target, key) {
+    if (activeEffect) {
+      let depsMap = targetMap.get(target);
+      if (!depsMap) {
+        targetMap.set(target, depsMap = /* @__PURE__ */ new Map());
+      }
+      let deps = depsMap.get(key);
+      if (!deps) {
+        depsMap.set(key, deps = /* @__PURE__ */ new Set());
+      }
+      trackEffects(deps);
+    }
+  }
+  function trackEffects(deps) {
+    let shouldTrack = !deps.has(activeEffect);
+    if (shouldTrack) {
+      deps.add(activeEffect);
+      activeEffect.deps.push(deps);
+    }
+  }
+  function trigger(target, key, value) {
+    let depsMap = targetMap.get(target);
+    if (!depsMap) {
+      return;
+    }
+    let effects = depsMap.get(key);
+    triggerEffects(effects);
+  }
+  function triggerEffects(effects) {
+    if (effects) {
+      effects.forEach((effcet) => {
+        effcet.run();
+      });
+    }
+  }
+  function effect(fn) {
+    const _effect = new ReactiveEffect(fn);
+    _effect.run();
+  }
+
   // packages/reactivity/src/baseHandler.ts
   var baseHandler = {
     get(target, key, receiver) {
       if (key === "__v_isReactive" /* IS_REACTIVE */) {
         return true;
       }
-      console.log("\u8FD9\u4E2A\u5C5E\u6027\u88AB\u53D6\u5230\u4E86");
+      track(target, key);
       return Reflect.get(target, key, receiver);
     },
     set(target, key, value, receiver) {
-      console.log("\u8FD9\u4E2A\u5C5E\u6027\u6539\u53D8\u4E86");
-      target[key] = value;
-      return Reflect.set(target, key, value, receiver);
+      let oldValue = target[key];
+      if (oldValue !== value) {
+        let result = Reflect.set(target, key, value, receiver);
+        trigger(target, key, value);
+        return result;
+      }
     }
   };
 
@@ -61,10 +129,6 @@ var VueReactivity = (() => {
     const proxy = new Proxy(target, baseHandler);
     reactiveMap.set(target, proxy);
     return proxy;
-  }
-
-  // packages/reactivity/src/effect.ts
-  function effect() {
   }
   return __toCommonJS(src_exports);
 })();
