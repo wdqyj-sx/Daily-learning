@@ -8,10 +8,10 @@
     
 </head>
 <body>
-    <script src="../../../node_modules/vue/dist/vue.global.js"></script>
+    <script src="./reactivity.global.js"></script>
     <div id="app"></div>
     <script>
-        const {effect,reactive } = Vue
+        const {effect,reactive } = VueReactivity
         //对数据进行绑定
         const obj = {
             name:'sx',
@@ -23,6 +23,7 @@
         }
         //这里只能传入对象，因为proxy只支持对象格式
         const state = reactive(obj)
+        // const state2 = reactive(state)
         //数据响应
         //effect函数会默认执行一次，后续数据发生变化会重新执行effect函数
         effect(()=>{

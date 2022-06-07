@@ -20,6 +20,7 @@ var VueReactivity = (() => {
   // packages/reactivity/src/index.ts
   var src_exports = {};
   __export(src_exports, {
+    effect: () => effect,
     reactive: () => reactive
   });
 
@@ -28,23 +29,42 @@ var VueReactivity = (() => {
     return typeof value === "object" && value !== null;
   };
 
+  // packages/reactivity/src/baseHandler.ts
+  var baseHandler = {
+    get(target, key, receiver) {
+      if (key === "__v_isReactive" /* IS_REACTIVE */) {
+        return true;
+      }
+      console.log("\u8FD9\u4E2A\u5C5E\u6027\u88AB\u53D6\u5230\u4E86");
+      return Reflect.get(target, key, receiver);
+    },
+    set(target, key, value, receiver) {
+      console.log("\u8FD9\u4E2A\u5C5E\u6027\u6539\u53D8\u4E86");
+      target[key] = value;
+      return Reflect.set(target, key, value, receiver);
+    }
+  };
+
   // packages/reactivity/src/reactive.ts
+  var reactiveMap = /* @__PURE__ */ new WeakMap();
   function reactive(target) {
     if (!isObject(target)) {
       return target;
     }
-    const proxy = new Proxy(target, {
-      get(target2, key, receiver) {
-        console.log("\u8FD9\u4E2A\u5C5E\u6027\u88AB\u53D6\u5230\u4E86");
-        return Reflect.get(target2, key, receiver);
-      },
-      set(target2, key, value, receiver) {
-        console.log("\u8FD9\u4E2A\u5C5E\u6027\u6539\u53D8\u4E86");
-        target2[key] = value;
-        return Reflect.set(target2, key, value, receiver);
-      }
-    });
+    const existing = reactiveMap.get(target);
+    if (existing) {
+      return existing;
+    }
+    if (target["__v_isReactive" /* IS_REACTIVE */]) {
+      return target;
+    }
+    const proxy = new Proxy(target, baseHandler);
+    reactiveMap.set(target, proxy);
     return proxy;
+  }
+
+  // packages/reactivity/src/effect.ts
+  function effect() {
   }
   return __toCommonJS(src_exports);
 })();
