@@ -1,37 +1,54 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Document</title>
-    
+
 </head>
+
 <body>
     <script src="./reactivity.global.js"></script>
     <div id="app"></div>
     <script>
-        const {effect,reactive } = VueReactivity
+        const { effect, reactive } = VueReactivity
         //对数据进行绑定
         const obj = {
-            name:'sx',
-            age:13,
-            address:{
-                num:30
+            name: 'sx',
+            age: 13,
+            address: {
+                num: 30
             },
-            flag:true
+            flag: true
         }
         //这里只能传入对象，因为proxy只支持对象格式
         const state = reactive(obj)
         // const state2 = reactive(state)
         //数据响应
         //effect函数会默认执行一次，后续数据发生变化会重新执行effect函数
-        effect(()=>{
-            app.innerHTML = state.name+'今年'+state.age+'岁了门牌号是'+state.address.num
+        let flag = true
+      let runner = effect(() => {
+            console.log('render')
+            app.innerHTML = state.flag ? state.name + '今年' + state.age + '岁了门牌号是' + state.address.num : 'hello world'
+           
+        },{
+            scheduler(){
+                if(flag){
+                flag = false
+            
+                Promise.resolve().then(()=>{
+                    runner()
+                })
+            }
+            }
         })
-        setTimeout(()=>{
-            state.age++
-        },1000)
+        setTimeout(() => {
+          state.address.num = 40
+
+        }, 1000)
     </script>
 </body>
+
 </html>

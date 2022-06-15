@@ -31,9 +31,17 @@ var VueReactivity = (() => {
 
   // packages/reactivity/src/effect.ts
   var activeEffect = void 0;
+  function cleanEffect(effect2) {
+    let deps = effect2.deps;
+    for (let i = 0; i < deps.length; ++i) {
+      deps[i].delete(effect2);
+    }
+    effect2.deps.length = 0;
+  }
   var ReactiveEffect = class {
-    constructor(fn) {
+    constructor(fn, scheduler) {
       this.fn = fn;
+      this.scheduler = scheduler;
       this.active = true;
       this.parent = null;
       this.deps = [];
@@ -45,12 +53,19 @@ var VueReactivity = (() => {
         try {
           this.parent = activeEffect;
           activeEffect = this;
+          cleanEffect(this);
           return this.fn();
         } finally {
           activeEffect = this.parent;
           this.parent = null;
         }
       }
+    }
+    stop() {
+      if (this.active) {
+        this.active = false;
+      }
+      cleanEffect(this);
     }
   };
   var targetMap = /* @__PURE__ */ new WeakMap();
@@ -84,14 +99,24 @@ var VueReactivity = (() => {
   }
   function triggerEffects(effects) {
     if (effects) {
-      effects.forEach((effcet) => {
-        effcet.run();
+      effects = new Set(effects);
+      effects.forEach((effect2) => {
+        if (effect2 !== activeEffect) {
+          if (effect2.scheduler) {
+            effect2.scheduler();
+          } else {
+            effect2.run();
+          }
+        }
       });
     }
   }
-  function effect(fn) {
-    const _effect = new ReactiveEffect(fn);
+  function effect(fn, options = {}) {
+    const _effect = new ReactiveEffect(fn, options.scheduler);
     _effect.run();
+    let runner = _effect.run.bind(_effect);
+    runner.effect = _effect;
+    return runner;
   }
 
   // packages/reactivity/src/baseHandler.ts
@@ -101,7 +126,11 @@ var VueReactivity = (() => {
         return true;
       }
       track(target, key);
-      return Reflect.get(target, key, receiver);
+      let res = Reflect.get(target, key, receiver);
+      if (isObject(res)) {
+        return reactive(res);
+      }
+      return res;
     },
     set(target, key, value, receiver) {
       let oldValue = target[key];

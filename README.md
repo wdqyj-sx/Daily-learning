@@ -1398,3 +1398,552 @@ function EventEmitter () {
 
       ```
       * 运行npm run dev 即可打包文件
+### Vue3数据绑定的实现
+#### Vue3的数据绑定
+> 不同于Vue2中的defineProperty方法，Vue3中采用proxy实现对数据的绑定，这种方式有以下好处：
+* 无需重写getter和setter对数据进行劫持
+* 无需实现$set和$delete方法实现对新增和删除属性的监控
+* 不许对数组进行单独处理
+> Vue3通过reactive模块来实现数据绑定，通过effect模块实现数据的更新
+```js
+ const {effect,reactive } = Vue
+        //对数据进行绑定
+        const obj = {
+            name:'sx',
+            age:13,
+            address:{
+                num:30
+            },
+            flag:true
+        }
+        //这里只能传入对象，因为proxy只支持对象格式
+        const state = reactive(obj)
+        //数据响应
+        //effect函数会默认执行一次，后续数据发生变化会重新执行effect函数
+        effect(()=>{
+            app.innerHTML = state.name+'今年'+state.age+'岁了门牌号是'+state.address.num
+        })
+        setTimeout(()=>{
+            state.age++
+        },1000)
+```
+#### reactive模块的实现
+> 根据其借助proxy的原理，可以实现reactive模块中的数据劫持
+* 新建reactive.ts文件，用于实现主要逻辑
+```js
+import {isObject} from "@vue/shared"
+
+export function reactive(target){
+    //传入的值需要是一个对象，如果不是，则不需要进行绑定
+    if(!isObject(target)){
+        return target
+    }
+}
+```
+* 原index.ts负责导出reactive模块
+```js
+export {reactive} from "./reactive"
+```
+* 在reactive中实现初步的proxy代理
+```js
+//实现最初的proxy
+    const proxy = new Proxy(target,{
+        get(target,key,receiver){
+            console.log('这个属性被取到了')
+            return target[key]
+        },
+        set(target,key,value,receiver){
+            console.log('这个属性改变了')
+            target[key] = value;
+            return true
+        }
+    })
+    return proxy
+```
+  > 对数据进行绑定的意义，在于当数据变化时可以随时更新页面，这里通过get方法，当数据被访问时，就可以和effect绑定，当该属性触发set函数时，同样触发effect更新即可实现数据的劫持  
+> 但是这种设置却有很大的问题，那就是对象的this指向问题
+* 对象一
+```js
+let person = {
+    name:'sx',
+    age(){
+        return 18
+    }
+}
+const proxy = new Proxy(person,{
+    get(target,key,receiver){
+        console.log('这个属性被取到了')
+        return target[key]
+    },
+    set(target,key,value,receiver){
+        console.log('这个属性改变了')
+        target[key] = value;
+        return true
+    }
+})
+
+proxy.name
+proxy.age
+
+```
+> 可以看到，这种对象用proxy可以顺利绑定每一个属性，但是下面这个却不能
+* 对象二
+```js
+let person = {
+    name:'sx',
+    get age(){
+        return this.name
+    }
+}
+const proxy = new Proxy(person,{
+    get(target,key,receiver){
+        console.log('这个属性被取到了')
+        console.log(key)
+        return target[key]
+    },
+    set(target,key,value,receiver){
+        console.log('这个属性改变了')
+        target[key] = value;
+        return true
+    }
+})
+
+
+proxy.age
+
+```
+> 这里访问proxy.age，按照设想和代码逻辑，当触发get之后，age属性会和effect进行绑定，当age属性值变化后，set中会让effect进行更新
+
+> 但是这里的age依赖的却是name，也就是说，当name发生改变时，实际上age的返回值也会发生改变，但是proxy却监听不到，也就无法触发effect对age进行更新
+
+> 这里的原因就是，age中的this指的是person对象，当通过proxy.age访问时，只会触发age属性的get,而不会触发name属性的get,自然当name变化时，effect不会触发更新
+
+> 要解决这个办法，只需要把this的指向改为proxy对象即可，而Reflect对象即可完成这件事
+```js
+let person = {
+    name:'sx',
+    get age(){
+        return this.name
+    }
+}
+const proxy = new Proxy(person,{
+    get(target,key,receiver){
+        console.log('这个属性被取到了')
+        console.log(key)
+        return Reflect.get(target,key,receiver)
+    },
+    set(target,key,value,receiver){
+        console.log('这个属性改变了')
+        target[key] = value;
+        return Reflect.set(target,key,value,receiver)
+    }
+})
+
+
+proxy.age
+
+```
+> 此时访问proxy.age，会同时触发age的get和name的get
+> 事实上，每次进行Proxy绑定对象属性也会对性能有所消耗，因此要尽可能减少proxy的使用,reactive接收一个对象，如果用户多次输入同一个对象，则没有必要每次对对象进行Proxy，只需要从缓存里拿就好
+
+* 情况一：用户输入同一数据对象
+  * 新建weakMap对象，判断是否存在该数据对象即可
+  ```js
+   const existing = reactiveMap.get(target)
+    if(existing){
+        return existing
+    }
+  ```
+  * 在创建好proxy之后，存入weakMap中
+  ```js
+    reactiveMap.set(target,proxy)
+  ```
+* 情况二：用户第二次传入数据对象对应的proxy
+```js
+ const state = reactive(obj)
+ const state2 = reactive(state)
+```
+> 如果第二次传入的是proxy实例，则只需要触发其get方法验证，如果get能触发，则说明是proxy，直接返回即可
+  * 新建枚举对象
+  ```js
+    export const enum ReactiveFlags {
+        IS_REACTIVE = '__v_isReactive'
+    }
+  ```
+  * 触发get
+  ```js
+  if(target[ReactiveFlags.IS_REACTIVE]){
+        return target
+    }
+  ```
+  * get中进行判断
+  ```js
+   if(key === ReactiveFlags.IS_REACTIVE){
+                return true
+            }
+  ```
+> 自此实现了Vue3中的数据绑定
+### 数据更新函数effect的实现
+#### 基本思路
+* reactive函数对数据进行proxy劫持
+* 调用effect函数，传入用户定义函数
+* 用户定义函数会自执行一次，其内存在对数据的调用
+* 对数据的调用会触发proxy接触
+  * 如果是触发get,则把当前触发的属性和当前effect绑定
+  * 如果触发set，则把当前属性绑定的effect取出，并调用，使之进行数据更行
+```js
+ const {effect,reactive } = VueReactivity
+        //对数据进行绑定
+        const obj = {
+            name:'sx',
+            age:13,
+            address:{
+                num:30
+            },
+            flag:true
+        }
+        //这里只能传入对象，因为proxy只支持对象格式
+        const state = reactive(obj)
+        // const state2 = reactive(state)
+        //数据响应
+        //effect函数会默认执行一次，后续数据发生变化会重新执行effect函数
+        effect(()=>{
+            app.innerHTML = state.name+'今年'+state.age+'岁了门牌号是'+state.address.num
+        })
+        setTimeout(()=>{
+            state.age++
+        },1000)
+```
+#### 实现细节
+##### ReactiveEffect类
+> ReactiveEffect类是effect的构造函数，其内部有控制传入的函数执行的函数run
+* 声明effect函数，实质是在内部实例化一个ReactiveEffect对象，并调用其run函数实现初次effect的执行，从而触发proxy，
+```js
+export function effect(fn){
+    const _effect = new ReactiveEffect(fn)
+    _effect.run()
+}
+```
+* run函数的作用不仅是执行其传入的回调，触发proxy,同时会将上下文暴漏给外部，赋值给activeEffect，由于js执行机制为单线程，因此当暴漏出指针后，触发proxy的get或者set,利用track函数进行依赖收集
+```js
+ run(){
+        //依赖收集，让属性和effect产生关联
+        //如果没有激活，则不进行依赖收集
+        if(!this.active){
+            return this.fn()
+        }else {
+           try{
+               //让activeEffect指向当前effect，
+                activeEffect = this
+                //触发react中的get或set
+                return this.fn()
+           }
+           finally{
+                activeEffect = undefined
+           }
+        }
+    }
+```
+##### 依赖收集函数track
+* 当触发proxy中的get，会调用依赖收集函数track，收集属性对应哪个effect，主要格式为：obj -> key -> effect。
+```js
+const targetMap = new weakMap()
+export function track(target,key){
+    if(activeEffect){
+       //判断是否存在该对象的键值
+       let depsMap = targetMap.get(target)
+       if(!depsMap){
+            targetMap.set(target,(depsMap = new Map()))
+       }
+       //判断是否存在该属性的键值
+        let deps = depsMap.get(key)
+        if(!deps){
+            depsMap.set(key,(deps = new Set()))
+        }
+        trackEffects(deps)
+    }
+
+}
+export function trackEffects(deps){
+    let shouldTrack = !deps.has(activeEffect)
+    if(shouldTrack){
+        deps.add(activeEffect)
+    }
+    // 在ReactiveEffect中声明公有变量deps，用来存储属性对应的集合deps
+    activeEffect.deps.push(deps)
+}
+```
+##### 触发更新函数trigger
+* 触发更新函数trigger在proxy的set中，当传进来的新值不等于旧值时，执行set的赋值操作，并触发trigger,trigger函数中会取出该属性所依赖的effect，依次执行其中的run函数，这样就完成了数据的更新
+```js
+export function trigger(target,key,value){
+    let depMaps = targetMap.get(target)
+    if(!depMaps){
+        return //没有依赖收集
+    }
+    let effects = depMaps.get(key)
+    triggerEffects(effects)
+}
+
+export function triggerEffects(effects){
+    if(effects){
+        effects.forEach(effect=>{
+            effect.run()
+        })
+    }
+}
+```
+##### 细节完善
+> 至此，我们根据最初的范例，已经能够实现数据改变，页面更新的效果,但是依然还有一些细节需要完善
+* effect的嵌套问题
+```js
+  effect(()=>{
+      effect(()=>{
+                state.age = 18
+            })
+            app.innerHTML = state.name+'今年'+state.age+'岁了门牌号是'+state.address.num
+          
+        })
+```
+> 我们通过用activeEffect记录effect内部实例的方式来暴漏出effect，从而实现依赖收集，到那时effect的run函数执行完之后，activeEffect会赋值为undefined，这就暴漏一个问题,activeEffect起初指向外层effect，然后指向内层effect，再然后执行完内层effect被赋值为undefined，但是外层还没有进行依赖收集，此时进行依赖收集将无法找到绑定的effect
+
+> 这种嵌套的调用类似一种树状结构，因此我们可以用activeEffect记录当前环境，当环境改变，记录其parent即可
+```js
+run(){
+    if(!this.active){
+        return this.fn()
+    }else {
+        try{
+            this.parent = activeEffect
+            activeEffect = this
+            return this.fn()
+        }
+        finally{
+            activeEffect = this.parent
+            this.parent = null
+        }
+    }
+}
+```
+* effect调用自己的问题
+```js
+ effect(()=>{
+            state.age = Math.random()
+            app.innerHTML = state.name+'今年'+state.age+'岁了门牌号是'+state.address.num
+          
+        })
+        setTimeout(()=>{
+            state.age++
+        },1000)
+```
+> 当effect完成依赖收集后，调用setTimeout函数，触发proxy的set,从而触发trigger更新，但是触发的过程中遇到 app.age = Math.random() ，会重复触发，使程序停不下来
+
+> 这种明显是我们不想看到的，因此再触发的时候可以进行判断，如果触发的effect和当前的activeEffect相同,则不进行更新操作
+```js
+effects.forEach(effect=>{
+    if(effect !== activeEffect){
+        effect.fn()
+    }
+})
+```
+* 清除多余依赖
+```js
+  effect(() => {
+            console.log('render')
+            app.innerHTML = state.flag ? state.name + '今年' + state.age + '岁了门牌号是' + state.address.num : 'hello world'
+        })
+        setTimeout(() => {
+            state.flag = false
+            setTimeout(() => {
+                state.age++
+            }, 1000);
+        }, 1000)
+```
+> effect进行依赖收集之后，调用外面的定时器，会将数据隐藏，此时再调用里面定时器改变age的值，页面依然刷新，这对性能印象很大
+
+> 解决这个问题就需要对依赖进行清除，当之前run函数进行依赖收集之前，将属性对该effect产生的依赖进行清除
+```js
+function cleanEffect(effect){
+    let deps = effect.deps
+    for(let i = 0;i<deps.length;++i){
+        deps[i].delete(effect)
+    }
+    effect.deps.length = 0
+}
+```
+>这样并不能解决问题，反而造成程序死循环，原因就是在进行trigger更新的时候，会循环遍历effect，依次执行run,再run 中又会cleaneffect依赖，重新收集依赖,从而造成死循环
+> 要解决这个方法只需要trigger时，新建一个effects集合即可
+```js
+if(effects){
+    effects = new Set(effects)
+    effects.forEach(effect=>{
+         if (effect !== activeEffect) { // 保证要执行的effect不是当前的effect
+                    effect.run(); // 数据变化了，找到对应的effect 重新执行
+                
+            }
+    })
+}
+```
+* effect返回值
+> effect可以返回一个值runner，其包含了停止更新的函数stop，也可以手动控制更新runner()
+
+  * ReactiveEffect中新增一个stop函数
+```js
+  stop(){
+        if(this.active){
+            this.active = false
+        }
+        cleanEffect(this)
+    }
+```  
+  * effect中新增返回值runner
+```js
+export function effect(fn){
+    const _effect = new ReactiveEffect(fn)
+    _effect.run()
+    let runner = _effect.run.bind(_effect)
+    runner.effect = _effect
+    return runner
+}
+```  
+```js
+  let runner = effect(() => {
+            console.log('render')
+            app.innerHTML = state.flag ? state.name + '今年' + state.age + '岁了门牌号是' + state.address.num : 'hello world'
+        })
+        runner.effect.stop()
+        setTimeout(() => {
+            state.flag = false
+            setTimeout(() => {
+                state.age++
+            }, 1000);
+        }, 1000)
+```
+> 可以看到，调用stop后，数据不再更新,重新调用runner，页面继续更新
+```js
+  let runner = effect(() => {
+            console.log('render')
+            app.innerHTML = state.flag ? state.name + '今年' + state.age + '岁了门牌号是' + state.address.num : 'hello world'
+        })
+        runner.effect.stop()
+        setTimeout(() => {
+            
+            state.flag = false
+            runner()
+        }, 1000)
+```
+* 更新调度函数的实现
+```js
+ let runner = effect(() => {
+            console.log('render')
+            app.innerHTML = state.flag ? state.name + '今年' + state.age + '岁了门牌号是' + state.address.num : 'hello world'
+        })
+        setTimeout(() => {
+            state.age++
+            state.age++
+            state.age++
+
+        }, 1000)
+```
+> 这里页面会渲染三次，而不会是等age全部更新完渲染一次,可以采用promise异步来做调度
+```js
+ let runner = effect(() => {
+            console.log('render')
+            app.innerHTML = state.flag ? state.name + '今年' + state.age + '岁了门牌号是' + state.address.num : 'hello world'
+            if(flag){
+                flag = false
+            
+                Promise.resolve().then(()=>{
+                    runner()
+                })
+            }
+        })
+        setTimeout(() => {
+            state.age++
+            state.age++
+            state.age++
+
+        }, 1000)
+```
+> effect同样自身也实现了调度函数，即effect可以传递第二个参数，为一个对象，对象中如果有scheduler函数，则数据变化执行scheduler函数，如果没有，则执行effect.run
+```js
+    let flag = true
+      let runner = effect(() => {
+            console.log('render')
+            app.innerHTML = state.flag ? state.name + '今年' + state.age + '岁了门牌号是' + state.address.num : 'hello world'
+           
+        },{
+            scheduler(){
+                if(flag){
+                flag = false
+            
+                Promise.resolve().then(()=>{
+                    runner()
+                })
+            }
+            }
+        })
+        setTimeout(() => {
+            state.age++
+            state.age++
+            state.age++
+
+        }, 1000)
+```
+>在triggerEffects函数中进行判断
+```js
+export function triggerEffects(effects) {
+   
+    if(effects){
+        effects = new Set(effects)
+        effects.forEach(effect =>{
+            if(effect !== activeEffect){
+                if(effect.scheduler){
+                    effect.scheduler()
+                }else{
+                    effect.run()
+                }
+            
+            }
+        })
+    }
+}
+```
+* 对引用类型进行数据绑定
+> 通过proxy进行绑定的数据只是对obj最外层做代理，里面不会被监控到
+```js
+    let runner = effect(() => {
+            console.log('render')
+            app.innerHTML = state.flag ? state.name + '今年' + state.age + '岁了门牌号是' + state.address.num : 'hello world'
+           
+        },{
+            scheduler(){
+                if(flag){
+                flag = false
+            
+                Promise.resolve().then(()=>{
+                    runner()
+                })
+            }
+            }
+        })
+        setTimeout(() => {
+          state.address.num = 40
+
+        }, 1000)
+```
+> 如上，改变state.address.num不会触发更新,但是在访问到state.address时，会触发，只需要在触发的时候做一层判断即可
+```js
+ get(target,key,receiver){
+        if(key === ReactiveFlags.IS_REACTIVE){
+            return true
+        }
+       track(target,key)
+        
+        let res = Reflect.get(target,key,receiver)
+        if(isObject(res)){
+            return reactive(res)
+        }
+        return res
+    },
+```

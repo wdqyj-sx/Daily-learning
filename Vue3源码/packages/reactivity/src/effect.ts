@@ -1,10 +1,19 @@
 export let activeEffect = undefined
 
+
+function cleanEffect(effect){
+    let deps = effect.deps
+    for(let i = 0;i<deps.length;++i){
+        deps[i].delete(effect)
+    }
+    effect.deps.length = 0
+}
+
 export class ReactiveEffect{
     public active = true
     public parent = null
     public deps = []
-    constructor(public fn){
+    constructor(public fn,public scheduler){
     }
     run(){
         //依赖收集，让属性和effect产生关联
@@ -16,6 +25,7 @@ export class ReactiveEffect{
                //让activeEffect指向当前effect，
                 this.parent = activeEffect
                 activeEffect = this
+                cleanEffect(this)
                 //触发react中的get或set
                 return this.fn()
            }
@@ -24,6 +34,12 @@ export class ReactiveEffect{
                 this.parent = null;
            }
         }
+    }
+    stop(){
+        if(this.active){
+            this.active = false
+        }
+        cleanEffect(this)
     }
 
 }
@@ -67,13 +83,24 @@ export function trigger(target,key,value){
 export function triggerEffects(effects) {
    
     if(effects){
-        effects.forEach(effcet =>{
-            effcet.run()
+        effects = new Set(effects)
+        effects.forEach(effect =>{
+            if(effect !== activeEffect){
+                if(effect.scheduler){
+                    effect.scheduler()
+                }else{
+                    effect.run()
+                }
+            
+            }
         })
     }
 }
 
-export function effect(fn){
-    const _effect = new ReactiveEffect(fn)
+export function effect(fn,options={} as any){
+    const _effect = new ReactiveEffect(fn,options.scheduler)
     _effect.run()
+    let runner = _effect.run.bind(_effect)
+    runner.effect = _effect
+    return runner
 }

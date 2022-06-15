@@ -1,4 +1,5 @@
-import { triggerRef } from "vue"
+import { isObject } from "@vue/shared"
+import {reactive} from "./reactive"
 import { track,trigger } from "./effect"
 
 export const enum ReactiveFlags {
@@ -12,7 +13,12 @@ export const baseHandler = {
             return true
         }
        track(target,key)
-        return Reflect.get(target,key,receiver)
+        
+        let res = Reflect.get(target,key,receiver)
+        if(isObject(res)){
+            return reactive(res)
+        }
+        return res
     },
     set(target,key,value,receiver){
        let oldValue = target[key]
