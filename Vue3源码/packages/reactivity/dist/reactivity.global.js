@@ -20,6 +20,7 @@ var VueReactivity = (() => {
   // packages/reactivity/src/index.ts
   var src_exports = {};
   __export(src_exports, {
+    computed: () => computed,
     effect: () => effect,
     reactive: () => reactive
   });
@@ -27,6 +28,9 @@ var VueReactivity = (() => {
   // packages/shared/src/index.ts
   var isObject = (value) => {
     return typeof value === "object" && value !== null;
+  };
+  var isFunction = (value) => {
+    return typeof value === "function";
   };
 
   // packages/reactivity/src/effect.ts
@@ -159,6 +163,54 @@ var VueReactivity = (() => {
     reactiveMap.set(target, proxy);
     return proxy;
   }
+
+  // packages/reactivity/src/computed.ts
+  function computed(getterOrOptions) {
+    let getter = null;
+    let setter = null;
+    let fn = () => {
+      throw new Error("this function is onlyRead");
+    };
+    let isGetter = isFunction(getterOrOptions);
+    if (isGetter) {
+      getter = getterOrOptions;
+      setter = fn;
+    } else {
+      getter = getterOrOptions.get;
+      setter = getterOrOptions.set || fn;
+    }
+    return new computedRefImpl(getter, setter);
+  }
+  var computedRefImpl = class {
+    constructor(getter, setter) {
+      this.setter = setter;
+      this._value = null;
+      this._dirty = true;
+      this.effect = null;
+      this.deps = null;
+      this.effect = new ReactiveEffect(getter, () => {
+        if (!this._dirty) {
+          this._dirty = true;
+          debugger;
+          triggerEffects(this.deps);
+        }
+      });
+    }
+    get value() {
+      debugger;
+      if (activeEffect) {
+        trackEffects(this.deps || (this.deps = /* @__PURE__ */ new Set()));
+      }
+      if (this._dirty) {
+        this._dirty = false;
+        this._value = this.effect.run();
+      }
+      return this._value;
+    }
+    set value(newValue) {
+      this.setter(newValue);
+    }
+  };
   return __toCommonJS(src_exports);
 })();
 //# sourceMappingURL=reactivity.global.js.map
