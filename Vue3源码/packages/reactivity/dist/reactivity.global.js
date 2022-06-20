@@ -22,7 +22,8 @@ var VueReactivity = (() => {
   __export(src_exports, {
     computed: () => computed,
     effect: () => effect,
-    reactive: () => reactive
+    reactive: () => reactive,
+    watch: () => watch
   });
 
   // packages/shared/src/index.ts
@@ -124,6 +125,9 @@ var VueReactivity = (() => {
   }
 
   // packages/reactivity/src/baseHandler.ts
+  function isReactive(value) {
+    return value && value["__v_isReactive" /* IS_REACTIVE */];
+  }
   var baseHandler = {
     get(target, key, receiver) {
       if (key === "__v_isReactive" /* IS_REACTIVE */) {
@@ -191,7 +195,6 @@ var VueReactivity = (() => {
       this.effect = new ReactiveEffect(getter, () => {
         if (!this._dirty) {
           this._dirty = true;
-          debugger;
           triggerEffects(this.deps);
         }
       });
@@ -211,6 +214,42 @@ var VueReactivity = (() => {
       this.setter(newValue);
     }
   };
+
+  // packages/reactivity/src/watch.ts
+  function traversal(value, set = /* @__PURE__ */ new Set()) {
+    if (!isObject(value)) {
+      return value;
+    }
+    if (set.has(value)) {
+      return value;
+    }
+    set.add(value);
+    for (let key in value) {
+      traversal(value[key], set);
+    }
+    return value;
+  }
+  function watch(source, cb) {
+    let get = null;
+    let cleanUp = null;
+    let oldValue = null;
+    if (isReactive(source)) {
+      get = () => traversal(source);
+    } else if (isFunction(source)) {
+      get = source;
+    }
+    const onCleanUp = (fn) => {
+      this.cleanUp = fn;
+    };
+    let job = () => {
+      cleanUp && cleanUp();
+      let newValue = effect2.run;
+      cb(oldValue, newValue, onCleanUp);
+      oldValue = newValue;
+    };
+    let effect2 = new ReactiveEffect(get, job);
+    oldValue = effect2.run();
+  }
   return __toCommonJS(src_exports);
 })();
 //# sourceMappingURL=reactivity.global.js.map

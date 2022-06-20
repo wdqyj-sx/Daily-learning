@@ -1947,3 +1947,226 @@ export function triggerEffects(effects) {
         return res
     },
 ```
+### computed实现原理
+#### computed特性
+> computed可以传入一个函数，也可以传入一个对象（带有get和set方法）,计算属性返回一个计算值，该值通过value属性访问，当参与计算的数据发生改变，则重新计算，不发生改变，则直接返回之前缓存的值
+* render 只执行了一次
+```js
+   const { effect, reactive,computed } = VueReactivity
+
+        const state = reactive({
+            firstName:'s',
+            lastName:'x'
+        })
+        let fullName = computed(()=>{
+            console.log('runner')
+            return state.firstName + state.lastName
+        })
+        console.log(fullName.value)
+        console.log(fullName.value)
+        console.log(fullName.value)
+```
+> 计算属性返回值可以作为属性参与effect更新
+```js
+ const { effect, reactive,computed } = VueReactivity
+
+        const state = reactive({
+            firstName:'s',
+            lastName:'x'
+        })
+       
+        let fullName = computed({
+            get(){
+                return state.firstName + state.lastName
+            },
+            set(value){
+                state.lastName = value
+            }
+        })
+        fullName.value = 100
+        effect(()=>{
+            app.innerHTML = fullName.value
+        })
+        setTimeout(()=>{
+            state.firstName = 'x'
+        },1000)
+```
+#### 实现思路
+* 导出一个computed函数,函数内部有两个变量getter、setter
+* 函数传入一个对象或者函数。
++ 如果是函数，则将该函数赋值给getter,setter赋值为一个报错函数(即抛出错误)
++ 如果是对象，则将其get和set分别赋值给getter和setter
+* 创建computedRefImpl类，有两个形参(getter、setter),在computer函数中实例化并返回该类
++ 类中在实例的constructor构造器中通过实例化ReactiveEffect类，传入getter，实现对计算属性函数传入的属性的数据绑定，传入第二个参数，在数据更新完之后将_dirty标记为true，并实现数据更新（triggerEffects）
++ 私有变量_dirty控制数据是否更新
++ 其有两个方法get value 和 set value
++ 当调用get，让ReactiveEffect实例运行，获取其返回值赋值给内部变量_value，并返回改变量，将_dirty设置为false，表示没有新的数据改变了，可以使用缓存,判断当前环境是否存在activeEffect，存在则进行依赖收集（调用trackEffects）
++ 调用set则运行setter
+> 完整代码如下：
+```js
+import { isFunction } from "@vue/shared"
+import { activeEffect, trackEffects, triggerEffects,ReactiveEffect } from "./effect";
+
+export function computed(getterOrOptions){
+    let getter = null;
+    let setter = null;
+    let fn = ()=>{
+        throw new Error("this function is onlyRead");
+									
+    }
+    let isGetter = isFunction(getterOrOptions)
+    if(isGetter){
+        getter = getterOrOptions
+        setter = fn
+    }
+    else {
+        getter = getterOrOptions.get
+        setter = getterOrOptions.set || fn
+    }
+
+    return new computedRefImpl(getter,setter)
+}
+
+class computedRefImpl{
+    private _value = null
+    private _dirty = true
+    public effect = null
+    public deps = null
+    constructor(getter,public setter){
+        this.effect = new ReactiveEffect(getter,()=>{
+            if(!this._dirty){
+                this._dirty = true
+                triggerEffects(this.deps)
+            }
+        })
+    }
+    get value(){
+        debugger
+        if(activeEffect){
+            // 存在effect，则进行依赖收集
+            trackEffects(this.deps ||  (this.deps = new Set()) )
+        }
+        if(this._dirty){
+            this._dirty = false
+            this._value = this.effect.run()
+        }
+        return this._value
+    }
+    set value(newValue){
+        this.setter(newValue)
+    }
+}
+```
+### watch方法的实现
+> Vue3中的watch方法用来监测数据的变化，然后执行某些操作，如监测用户的输入
+#### 原生方法的使用
+* 如果监控的是一个对象，则无法拿到新值和旧值
+```js
+ const { effect, reactive, computed, watch } = Vue
+        // const { effect, reactive,computed } = VueReactivity
+        const state = reactive({
+            firstName: 's',
+            lastName: 'x'
+        })
+        watch(state, (newValue, oldValue) => {
+            console.log(newValue, oldValue)
+        })
+        setTimeout(() => {
+            state.lastName = 'xxx'
+        }, 1000);
+```
+> 输入newValue和oldValue结果都为改变后的值
+* 如果监控的是一个对象，则会深度监控，即迭代监控对象的每一个属性，因此要尽量避免使用对象，减少资源浪费
+* 监控的是某个属性，则需写成函数式
+```js
+   const { effect, reactive, computed, watch } = Vue
+        // const { effect, reactive,computed } = VueReactivity
+        const state = reactive({
+            firstName: 's',
+            lastName: 'x'
+        })
+        watch(()=>state.lastName, (newValue, oldValue) => {
+            console.log(newValue, oldValue)
+        })
+        setTimeout(() => {
+            state.lastName = 'xxx'
+        }, 1000);
+```
+* 其第二个参数可以传入三个参数，第三个参数是节流控制参数，方式数据多次改变异步并发
+  * 当第一次改变state.age时，onCleanup中的回调不执行
+  * 第二次改变时，执行onCleanUp中的回调，此时如果上一步的异步还在执行，则会使其不发生作用
+```js
+ const state = reactive({ flag: true, name: 'jw ', age: 30 })
+        let i = 2000;
+        function getData(timer) {
+            return new Promise((resolve, reject) => {
+                setTimeout(() => {
+                    resolve(timer)
+                }, timer);
+            })
+        }
+        // 调用下一次的watch会执行上一次的onCleanup
+        watch(() => state.age, async (newValue, oldValue,onCleanup) => {
+            let f = false;
+            onCleanup(()=>{ // 当我们把age= 32的时候会执行第一次的onCleanup中的回掉
+                f = true;
+            })
+            i-=1000;
+            let r = await getData(i); // 2000
+            !f  && (document.body.innerHTML = r); 
+        }, { flush: 'sync' });
+        state.age = 31; // f = true   1s后应该渲染1000
+        state.age = 32; //  f = false 0s后显示0 
+```
+> 新值和旧值会输出
+#### watch方法的实现
+* watch传入两个参数，第一个参数为要监听的属性source,第二个参数为属性变化后的回调cb
+* 判断source类型，若是Proxy，则深度监控，交给监控函数，若是函数，则执行下一步
+* 创建job函数
+  * 函数首先判断是否存在onCleanUp回调，存在则执行
+* 创建ReactiveEffect实例，第一个参数为source,第二个参数为job
+* 运行一次ReactiveEffect实例，获取原先值oldValue
+* 在job中运行ReactiveEffect实例，获取新值newValue,运行cb
+* 将newValue赋值给oldValue
+```js
+import { isFunction, isObject } from "@vue/shared";
+import { isReactive } from "./baseHandler";
+import { ReactiveEffect } from "./effect";
+
+function traversal(value,set = new Set()){
+    if(!isObject(value)){
+        return value
+    }
+    if(set.has(value)){
+        return value
+    }
+    set.add(value)
+    for(let key in value){
+        traversal(value[key],set)
+    }
+    return value
+}
+export function watch(source,cb){
+    let get = null;
+    let cleanUp = null;
+    let oldValue = null;
+    if(isReactive(source)){
+        get = ()=>traversal(source)
+    }else if(isFunction(source)){
+        get = source
+    }
+
+    const onCleanUp = (fn)=>{
+        this.cleanUp = fn
+    }
+
+    let job = () => {
+        cleanUp && cleanUp()
+        let  newValue = effect.run
+        cb(oldValue,newValue,onCleanUp)
+        oldValue = newValue
+    }
+    let effect = new ReactiveEffect(get,job)
+    oldValue = effect.run()
+}
+```
