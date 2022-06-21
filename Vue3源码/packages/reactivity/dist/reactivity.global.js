@@ -23,6 +23,9 @@ var VueReactivity = (() => {
     computed: () => computed,
     effect: () => effect,
     reactive: () => reactive,
+    ref: () => ref,
+    toRef: () => toRef,
+    toRefs: () => toRefs,
     watch: () => watch
   });
 
@@ -249,6 +252,60 @@ var VueReactivity = (() => {
     };
     let effect2 = new ReactiveEffect(get, job);
     oldValue = effect2.run();
+  }
+
+  // packages/reactivity/src/ref.ts
+  function ref(value) {
+    return new RefImpl(value);
+  }
+  function toRef(object, key) {
+    return new ObjectRefImpl(object, key);
+  }
+  function toRefs(object) {
+    let result = {};
+    for (let key in object) {
+      result[key] = toRef(object, key);
+    }
+    return result;
+  }
+  var ObjectRefImpl = class {
+    constructor(object, key) {
+      this.object = object;
+      this.key = key;
+      this.__v_isRef = true;
+      this._value = null;
+    }
+    get value() {
+      return this.object[this.key];
+    }
+    set value(newValue) {
+      this.object[this.key] = newValue;
+    }
+  };
+  var RefImpl = class {
+    constructor(rawValue) {
+      this.rawValue = rawValue;
+      this._value = null;
+      this.__v_isRef = true;
+      this.dep = null;
+      this._value = toReactive(rawValue);
+    }
+    get value() {
+      if (activeEffect) {
+        trackEffects(this.dep || (this.dep = /* @__PURE__ */ new Set()));
+      }
+      return this._value;
+    }
+    set value(newValue) {
+      if (newValue !== this.rawValue) {
+        this._value = toReactive(newValue);
+        this.rawValue = newValue;
+        triggerEffects(this.dep);
+      }
+    }
+  };
+  function toReactive(value) {
+    return isObject(value) ? reactive(value) : value;
   }
   return __toCommonJS(src_exports);
 })();
