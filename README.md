@@ -31,6 +31,28 @@
     - [Vue3 环境搭建](#vue3-环境搭建)
       - [Monorepo管理项目](#monorepo管理项目)
       - [模拟打包流程](#模拟打包流程)
+    - [Vue3数据绑定的实现](#vue3数据绑定的实现)
+      - [Vue3的数据绑定](#vue3的数据绑定)
+      - [reactive模块的实现](#reactive模块的实现)
+    - [数据更新函数effect的实现](#数据更新函数effect的实现)
+      - [基本思路](#基本思路)
+      - [实现细节](#实现细节)
+        - [ReactiveEffect类](#reactiveeffect类)
+        - [依赖收集函数track](#依赖收集函数track)
+        - [触发更新函数trigger](#触发更新函数trigger)
+        - [细节完善](#细节完善)
+    - [computed实现原理](#computed实现原理)
+      - [computed特性](#computed特性)
+      - [实现思路](#实现思路)
+    - [watch方法的实现](#watch方法的实现)
+      - [原生方法的使用](#原生方法的使用)
+      - [watch方法的实现](#watch方法的实现-1)
+    - [Vue3中ref的实现原理](#vue3中ref的实现原理)
+      - [ref基本使用](#ref基本使用)
+      - [ref相关实现](#ref相关实现)
+    - [vue3渲染模块的domapi实现原理](#vue3渲染模块的domapi实现原理)
+      - [vue中runtime-core的渲染逻辑](#vue中runtime-core的渲染逻辑)
+      - [runtime-dom中相关api的实现](#runtime-dom中相关api的实现)
 ## [博客地址](https://blog.csdn.net/wenyeqv?type=blog)
 ## node
   * 记录node的学习历程
@@ -2170,3 +2192,283 @@ export function watch(source,cb){
     oldValue = effect.run()
 }
 ```
+### Vue3中ref的实现原理
+#### ref基本使用
+> ref可以使普通值转换为响应式的对象
+```js
+
+    const { effect, reactive, computed, watch,ref } = Vue;
+
+    const state = reactive({
+        name:'s',
+        age:13
+    })
+    let flag = ref(false)
+    effect(()=>{
+        app.innerHTML = flag.value
+    })
+    setTimeout(()=>{
+        flag.value = true
+    },1000)
+```
+#### ref相关实现
+* ref实际就是对一个普通值做了一层包装，包装成一个对象，并通过其get和set实现依赖收集和更新,其实现原理类似于computed
+```js
+import { isObject } from "@vue/shared";
+import { reactive } from "./reactive";
+import { activeEffect, trackEffects, triggerEffects } from "./effect";
+
+export function ref(value){
+    return new RefImpl(value);
+}
+
+
+class RefImpl {
+    private _value = null;
+    private __v_isRef = true;
+    private dep = null;
+    constructor(public rawValue){
+        this._value = toReactive(rawValue) 
+    }
+    get value(){
+        if(activeEffect){
+            trackEffects(this.dep ||(this.dep = new Set()))
+        }
+        return this._value
+    }
+   set value(newValue){
+        if(newValue !== this.rawValue){
+            this._value = toReactive(newValue)
+            this.rawValue = newValue
+            triggerEffects(this.dep)
+        }
+   }
+}
+
+
+export function toReactive(value){
+    return isObject(value) ? reactive(value):value
+}
+
+```
+* 其中有一个toRef函数，可以解析proxy对象，对单个属性形成响应式
+```js
+   const { effect, reactive, computed, watch,ref,toRef } = Vue;
+
+        const state = reactive({
+            name:'s',
+            age:13
+        })
+        let name = toRef(state,'name')
+        effect(()=>{
+            app.innerHTML = name.value
+        })
+        setTimeout(()=>{
+            name.value = 'xx' 
+        },1000)
+```
+> 其实现原理是利用get和set,当访问属性的value时，返回object[key].value
+```js
+export function toRef(object,key){
+    return new ObjectRefImpl(object,key)
+}
+
+class ObjectRefImpl{
+    private __v_isRef = true;
+    private _value = null;
+    constructor(public object,public key){
+    }
+    get value(){
+        return this.object[this.key]
+    }
+    set value(newValue){
+        this.object[this.key] = newValue
+    }
+}
+```
+* 同理 toRefs函数可以对proxy对象的所有属性进行响应式
+```js
+ const { effect, reactive, computed, watch,ref,toRef,toRefs } = Vue;
+
+        const state = reactive({
+            name:'s',
+            age:13
+        })
+        let {name,age }= toRefs(state)
+        effect(()=>{
+            app.innerHTML = name.value + age.value
+        })
+        setTimeout(()=>{
+            name.value = 'xx' 
+        },1000)
+```
+
+ * 通过toRefs可以直接通过属性.value进行访问，但是每次访问加上value，未免太过麻烦，有什么办法可以直接访问属性吗?proxyRefs可以实现这个需求
+```js
+export function proxyRefs(object){
+    return new Proxy(object,{
+        get(target,key,receiver){
+            let r = Reflect.get(target,key,receiver)
+            return r.__v_isRef?r.value:r
+        },
+        set(target,key,value,receiver){
+            if(target[key].__v_isRef ){
+                target[key].value = value
+                return true
+            }
+            return Reflect.set(target,key,value,receiver)
+        }
+    })
+}
+```
+### vue3渲染模块的domapi实现原理
+> vue3中渲染模块有两个子模块，分别是runtime-dom和runtime-core，其中，runtime-dom模块提供了常用的节点操作api和属性操作的api，而runtime-core中则包含虚拟dom的创建，diff算法等。
+
+> 通过vue3中的runtime-core可以实现自己的渲染逻辑
+
+> 本节来完善runtime-dom中的domapi，以便后面供runtime-core模块使用
+
+#### vue中runtime-core的渲染逻辑
+```js
+ <script src="./runtime-dom.global.js"></script>
+    <div id="app"></div>
+    <script>
+        const  {createRenderer,h } = VueRuntimeDOM
+        const {render,createApp} = createRenderer({
+
+        })
+        console.log(h('h1','hello world'),app)
+    </script>
+```
+* 结果输出虚拟dom h1节点
+* h函数为runtime-core中创建虚拟dom的函数
+* createRenderer函数可以让用户自己创建一个渲染器，从而创建元素
+  * createRenderer函数里面，需要用户传入如何操作节点的命令，即元素创建api和属性创建api
+#### runtime-dom中相关api的实现
+* 在runtime-dom新建nodeOps模块和patchProp模块，分别处理dom操作和属性操作
+* dom 操作
+  * nodeOps模块为一个类，包含各种元素操作方法，主要有：
+    * 元素创建
+    * 文本节点创建
+    * 元素插入
+    * 移除节点
+    * 获取节点
+    * 获取节点父节点
+    * 获取兄弟节点
+    * 给文本节点设置内容
+    * 给元素节点设置内容
+   ```js
+   export const nodeOps  = {
+    createElement(tagName){
+        return document.createElement(tagName)
+    },
+    createTextNode(text){
+        return document.createTextNode(text)
+    },
+    insert(element,container,anchor = null){
+        container.insertBefore(element,anchor); // ==appendChild 
+    },
+    remove(child){
+        const parent = child.parentNode;
+        if(parent){
+            parent.removeChild(child);
+        }
+    },
+    querySelector(selectors){
+        return document.querySelector(selectors);
+    },
+    parentNode(child){ // 父节点
+        return child.parentNode
+    },
+    nextSibling(child){ // 获取兄弟元素
+        return child.nextSibling
+    },
+    setText(element,text){ // 给文本节点设置内容
+        element.nodeValue = text;
+    },
+    setElementText(element,text){ // 给元素节点设置内容 innerHTML
+        element.textContent = text;
+    }
+   }
+   ```
+  * 属性操作
+    * 对节点的属性操作包含多种情况，取决于节点的属性是什么，总体来说可以分为四种：
+      * 类名
+      * 行内样式
+      * 事件
+      * 其它属性 
+    * patchProp方法需要接收四个参数，分别是el:元素，key:属性名，preValue:之前的属性值，nextValue:新的属性值
+    * 通过key判断属于哪一种情况，分别进行相关的处理
+    * key === class:
+      * 当是对类名的操作时，只需要判断nextValue是否存在，若存在则直接替换，若不存在则删除改属性
+        ```js
+        export function patchClass(el,nextValue){
+            if(nextValue == null){
+                el.removeAttribute('class')
+            }else{
+                el.className = nextValue
+            }
+        }
+        ```
+    * key === 'style':
+      * 若key为style，直接用nextValue进行替换对效率不太好，最好的方法是将nextValue和preValue进行对比，若之后存在的则保留，不存在的则删除。
+      ```js
+        export function patchStyle(el,preValue,nextValue){ // 我如何比较两个对象的差异？
+            if(preValue == null) preValue = {};
+            if(nextValue == null ) nextValue = {}
+            // 比对两个对象 需要同时遍历 新的和老的 
+            const style = el.style
+            for(let key in nextValue){
+                style[key] = nextValue[key]
+            }
+            if(preValue){
+                for(let key in preValue){
+                    if(nextValue[key] == null){
+                        // 老的有 新的没有 需要删除老的
+                        style[key] = null;
+                    }
+                }
+            }
+        }
+      ```
+    * key为事件
+      * 若为事件，则需要将之前的事件缓存起来，当有新事件时，则直接添加新事件并缓存，若事件名不变，事件函数繁盛改变，则需要从缓存中取出原事件，将事件的执行内容替换
+      ```js
+      function createInvoker(preValue) {
+            const invoker = (e) => { invoker.value(e) }; // 这个地方需要调用才会执行 invoker.value
+
+            invoker.value = preValue; // 后续只需要修改value的引用就可以 达到调用不同的逻辑
+            return invoker
+        }
+        export function patchEvent(el, eventName, nextValue) {
+            const invokers = el._vei || (el._vei = {});
+            const exitingInvoker = invokers[eventName];
+
+            if (exitingInvoker && nextValue) { // 进行换绑
+                exitingInvoker.value = nextValue;
+            } else {
+                // 不存在缓存的情况  addEventListener('click')
+                const eName = eventName.slice(2).toLowerCase()
+                if (nextValue) {
+                    const invoker = createInvoker(nextValue); // 默认会将第一次的函数绑定到invoker.value上
+                    // el._vei  = {onClick: invoker}
+                    invokers[eventName] = invoker; // 缓存invoker
+                    el.addEventListener(eName, invoker);
+                } else if (exitingInvoker) {    // 没有新的值，但是之前绑定过 我需要删除老
+                    el.removeEventListener(eName, exitingInvoker);
+                    invokers[eventName] = null; // 缓存invoker
+                }
+            }
+        }
+      ```  
+    * 其它属性的处理和class处理类似  
+* 渲染器的创建
+  * 除去自己创建一个渲染器外，根据domapi和属性操作api，vue内部会给用户提供一个创建好的渲染器， 渲染器函数为createRenderer，传入要操作的domapi，即可返回一个渲染器函数render
+  ```js
+  const renderOptions = {patchProp,...nodeOps}
+    // vue内置的渲染器，我们也可以通过createRenderer 创建一个渲染器，自己决定渲染方式
+    export function render(vnode,container){
+        let {render} = createRenderer(renderOptions);
+        return render(vnode,container)
+    }
+  ```
