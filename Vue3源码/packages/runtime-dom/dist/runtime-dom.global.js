@@ -35,6 +35,7 @@ var VueRuntimeDOM = (() => {
   var src_exports = {};
   __export(src_exports, {
     computed: () => computed,
+    createRenderer: () => createRenderer,
     createVNode: () => createVNode,
     effect: () => effect,
     h: () => h,
@@ -144,9 +145,13 @@ var VueRuntimeDOM = (() => {
     }
     function render2(vnode, container) {
       if (vnode == null) {
+        if (container._vnode) {
+          umount(container._vnode);
+        }
       } else {
         patch(container._vnode || null, vnode, container);
       }
+      container._vnode = vnode;
     }
     return {
       render: render2
@@ -172,7 +177,7 @@ var VueRuntimeDOM = (() => {
       let c1 = n1.children;
       let c2 = n2.children;
       const prevShapeFlag = n1.shapeFlags;
-      const shapeFlag = n2.shapeFlag;
+      const shapeFlag = n2.shapeFlags;
       if (shapeFlag && shapeFlag & 8 /* TEXT_CHILDREN */) {
         if (prevShapeFlag & 16 /* ARRAY_CHILDREN */) {
           unmountChildren(c1);
@@ -183,6 +188,7 @@ var VueRuntimeDOM = (() => {
       } else {
         if (prevShapeFlag & 16 /* ARRAY_CHILDREN */) {
           if (shapeFlag & 16 /* ARRAY_CHILDREN */) {
+            patchKeyedChildren(c1, c2, el);
           } else {
             unmountChildren(c1);
           }
@@ -208,6 +214,7 @@ var VueRuntimeDOM = (() => {
       if (shapeFlags & 16 /* ARRAY_CHILDREN */) {
         mountChildren(children, el);
       }
+      hostInsert(el, container, anchor);
     }
     function patchElemengt(n1, n2) {
       let el = n2.el = n1.el;
@@ -235,6 +242,8 @@ var VueRuntimeDOM = (() => {
       }
     }
   }
+  function patchKeyedChildren(c1, c2, el) {
+  }
 
   // packages/runtime-dom/src/nodeOps.ts
   var nodeOps = {
@@ -245,7 +254,7 @@ var VueRuntimeDOM = (() => {
       return document.createTextNode(text);
     },
     insert(element, container, anchor = null) {
-      container.inserBefore(element, anchor);
+      container.insertBefore(element, anchor);
     },
     remove(child) {
       const parent = child.parentNode;
@@ -620,9 +629,10 @@ var VueRuntimeDOM = (() => {
       if (isObject(propsOrChildren) && !isFunction(propsOrChildren)) {
         if (isVnode(propsOrChildren)) {
           return createVNode(type, null, [propsOrChildren]);
-        } else {
-          return createVNode(type, propsOrChildren);
         }
+        return createVNode(type, propsOrChildren);
+      } else {
+        return createVNode(type, null, propsOrChildren);
       }
     } else {
       if (l === 3 && isVnode(children)) {

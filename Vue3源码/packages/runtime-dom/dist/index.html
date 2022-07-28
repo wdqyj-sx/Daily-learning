@@ -12,8 +12,11 @@
     <script src="../dist/runtime-dom.global.js"></script>
     <div id="app"></div>
     <script>
-        const {createVNode} =  VueRuntimeDOM
-        console.log(createVNode('h1',null,'haha'))
+        const {createVNode,render,h} =  VueRuntimeDOM
+        render(h('h1',{'style':{'color':'red'}},'haha'),app)
+        setTimeout(function(){
+            render(h('h1',{'style':{'color':'black'},'onClick':function(){alert('aa')}},h('span','ss')),app)
+        },1000)
     </script>
 </body>
 </html>

@@ -9,7 +9,7 @@ export const nodeOps = {
     },
     //插入子节点
     insert(element,container,anchor = null){
-        container.inserBefore(element,anchor)
+        container.insertBefore(element,anchor)
     },
     //移除节点
     remove(child){
