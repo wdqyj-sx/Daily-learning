@@ -64,6 +64,7 @@ var VueRuntimeDOM = (() => {
 
   // packages/runtime-core/src/createVNode.ts
   var Text = Symbol("Text");
+  var Fragment = Symbol("Fragment");
   function isVnode(val) {
     return !!val.__v_isVNode;
   }
@@ -92,6 +93,46 @@ var VueRuntimeDOM = (() => {
       vnode.shapeFlags = vnode.shapeFlags | temp;
     }
     return vnode;
+  }
+
+  // packages/runtime-core/src/sequence.ts
+  function getSequence(arr) {
+    let len = arr.length;
+    let result = [0];
+    let p = new Array(len).fill(0);
+    let lastIndex, start, end, middle;
+    for (let i2 = 0; i2 < len; i2++) {
+      let arrI = arr[i2];
+      if (arrI !== 0) {
+        lastIndex = result[result.length - 1];
+        if (arr[lastIndex] < arrI) {
+          result.push(i2);
+          p[i2] = lastIndex;
+        } else {
+          start = 0;
+          end = result.length - 1;
+          while (start < end) {
+            middle = Math.floor((start + end) / 2);
+            if (arr[result[middle]] < arrI) {
+              start = middle + 1;
+            } else {
+              end = middle;
+            }
+          }
+          if (arr[result[end]] > arrI) {
+            p[i2] = result[end - 1];
+            result[end] = i2;
+          }
+        }
+      }
+    }
+    let i = result.length;
+    let last = result[i - 1];
+    while (i-- > 0) {
+      result[i] = last;
+      last = p[last];
+    }
+    return result;
   }
 
   // packages/runtime-core/src/renderer.ts
@@ -137,6 +178,8 @@ var VueRuntimeDOM = (() => {
         case Text:
           processText(n1, n2, container);
           break;
+        case Fragment:
+          processFragment(n1, n2, container);
         default:
           if (shapeFlags & 1 /* ELEMENT */) {
             processElement(n1, n2, container, anchor);
@@ -241,8 +284,91 @@ var VueRuntimeDOM = (() => {
         patchElemengt(n1, n2);
       }
     }
-  }
-  function patchKeyedChildren(c1, c2, el) {
+    function patchKeyedChildren(c1, c2, el) {
+      let i = 0;
+      let e1 = c1.length - 1;
+      let e2 = c2.length - 1;
+      while (i <= e1 && i <= e2) {
+        const n1 = c1[i];
+        const n2 = c2[i];
+        if (isSameVNode(n1, n2)) {
+          patch(n1, n2, el);
+        } else {
+          break;
+        }
+        i++;
+      }
+      while (e1 >= 0 && e2 >= 0) {
+        const n1 = c1[e1];
+        const n2 = c2[e2];
+        if (isSameVNode(n1, n2)) {
+          patch(n1, n2, el);
+        } else {
+          break;
+        }
+        e1--;
+        e2--;
+      }
+      if (i > e1) {
+        if (i < e1) {
+          while (i < e2) {
+            const nextPos = e2 + 1;
+            let anchor = c2.length <= nextPos ? null : c2[nextPos].el;
+            patch(null, c2[i], el, anchor);
+            i++;
+          }
+        }
+      } else if (i > e1) {
+        if (i <= e1) {
+          while (i <= e1) {
+            umount(c1[i]);
+            i++;
+          }
+        }
+      } else {
+        let s1 = i;
+        let s2 = i;
+        let toBePatched = e2 - s2 + 1;
+        const keyToNewIndexMap = /* @__PURE__ */ new Map();
+        for (let i2 = s2; i2 <= e2; i2++) {
+          keyToNewIndexMap.set(c2[i2].key, i2);
+        }
+        const seq = new Array(toBePatched).fill(0);
+        for (let i2 = s1; i2 <= e1; ++i2) {
+          let oldValue = c1[i2];
+          let newIndex = keyToNewIndexMap.get(c1.key);
+          if (newIndex == null) {
+            umount(oldValue);
+          } else {
+            seq[newIndex - s2] = i2 + 1;
+            patch(oldValue, c2[newIndex], el);
+          }
+        }
+        let incr = getSequence(seq);
+        let j = incr.length - 1;
+        for (let i2 = toBePatched - 1; i2 >= 0; i2--) {
+          const currentIndex = i2 + s2;
+          const child = c2[currentIndex];
+          const anchor = c2.length <= currentIndex + 1 ? null : c2[currentIndex + 1].el;
+          if (seq[i2] === 0) {
+            patch(null, child, el, anchor);
+          } else {
+            if (i2 !== incr[j]) {
+              hostInsert(child.el, el, anchor);
+            } else {
+              j--;
+            }
+          }
+        }
+      }
+    }
+    function processFragment(n1, n2, container) {
+      if (n1 == null) {
+        mountChildren(n2.children, container);
+      } else {
+        patchKeyedChildren(n1.children, n2.children, container);
+      }
+    }
   }
 
   // packages/runtime-dom/src/nodeOps.ts

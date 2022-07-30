@@ -2,7 +2,7 @@ import {isArray,isString} from "@vue/shared"
 
 //创建类型标识
 export const Text = Symbol("Text")
-
+export const Fragment = Symbol('Fragment')
 export function isVnode(val){
     return !!val.__v_isVNode
 }
