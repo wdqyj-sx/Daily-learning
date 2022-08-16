@@ -147,7 +147,7 @@ export function createRenderer(options) {
         hostInsert(el, container, anchor)
 
     }
-    function patchElemengt(n1, n2) {
+    function patchElement(n1, n2) {
 
         //说明n1,n2能复用
         let el = n2.el = n1.el
@@ -177,7 +177,7 @@ export function createRenderer(options) {
         } else {
             //更新节点
 
-            patchElemengt(n1, n2)
+            patchElement(n1, n2)
         }
     }
     function patchKeyedChildren(c1: any, c2: any, el: any) {

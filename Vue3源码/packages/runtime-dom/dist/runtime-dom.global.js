@@ -259,7 +259,7 @@ var VueRuntimeDOM = (() => {
       }
       hostInsert(el, container, anchor);
     }
-    function patchElemengt(n1, n2) {
+    function patchElement(n1, n2) {
       let el = n2.el = n1.el;
       let oldProps = n1.props;
       let newProps = n2.props;
@@ -281,7 +281,7 @@ var VueRuntimeDOM = (() => {
       if (n1 == null) {
         mountElement(n2, container, anchor);
       } else {
-        patchElemengt(n1, n2);
+        patchElement(n1, n2);
       }
     }
     function patchKeyedChildren(c1, c2, el) {
