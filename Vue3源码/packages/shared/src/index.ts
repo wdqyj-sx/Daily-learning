@@ -15,3 +15,7 @@ export const isNumber = (value)=>{
 }
 
 export const isArray = Array.isArray; 
+
+const hasOwnProperty = Object.prototype.hasOwnProperty
+
+export const hasOwn = (obj,key) => hasOwnProperty.call(obj,key)

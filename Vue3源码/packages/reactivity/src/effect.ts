@@ -13,7 +13,7 @@ export class ReactiveEffect{
     public active = true
     public parent = null
     public deps = []
-    constructor(public fn,public scheduler){
+    constructor(public fn,public scheduler?){
     }
     run(){
         //依赖收集，让属性和effect产生关联

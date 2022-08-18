@@ -1,4 +1,6 @@
 import { isNumber, isString } from "@vue/shared"
+import { ReactiveEffect } from "packages/reactivity/src/effect"
+import { createComponentInstance, setupComponent } from "./components"
 import { isSameVNode, Text, ShapeFlags, createVNode, Fragment } from "./createVNode"
 import { getSequence } from "./sequence"
 
@@ -51,9 +53,102 @@ export function createRenderer(options) {
                 processFragment(n1,n2,container)
             default:
                 if (shapeFlags & ShapeFlags.ELEMENT) {
-
                     processElement(n1, n2, container, anchor)
+                }else if(shapeFlags & ShapeFlags.STATEFUL_COMPONENT){
+                    processComponent(n1,n2,container,anchor);
                 }
+        }
+    }
+    //处理组件
+    function processComponent(n1,n2,container,anchor){
+        if(n1==null){
+            //进入到初始化组件流程
+            mountComponent(n2,container,anchor)
+        }
+        else {
+            //进入到更新组件流程
+            updateComponent(n1,n2)
+        }
+    }
+   
+    //初始化组件
+    function mountComponent(vnode,container,anchor){
+        //组件挂在前，需要产生一个组件的实例，组件的状态，组件的属性，组件对应的生命周期
+        //然后将创建的实例保存在vnode上
+        const instance = vnode.component = createComponentInstance(vnode)
+        //处理组件属性
+        setupComponent(instance)
+        //给产生一个effect,使之变成响应式
+        setupRenderEffect(instance,container,anchor)
+    }
+    function setupRenderEffect(instance,container,anchor){
+        const componentUpdate = ()=>{
+            const {render,data} = instance
+            if(!instance.isMounted){
+                //组件最终渲染的虚拟节点实际上是subTree
+                //调用render会做收集依赖，数据变化则重新调用update
+                const subTree = render.call(instance.proxy)
+                patch(null,subTree,container,anchor)
+                instance.subTree = subTree
+                instance.isMounted = true
+            }else {
+                //组件挂载过，走更新逻辑
+                let next = instance.next //表示新的虚拟节点
+                if(next){
+                    //更新属性
+                    updateComponentPreRender(instance,next)
+                }
+                const subTree = render.call(instance.proxy)
+                patch(instance.subTree,subTree,container,anchor)
+                instance.subTree = subTree
+            }
+        }
+        const effect = new ReactiveEffect(componentUpdate)
+        let update = instance.update = effect.run.bind(effect)
+        update()
+    }
+    //更新属性
+    function updateComponentPreRender(instance,next){
+        instance.next = null
+        instance.vnode = next
+        updateProps(instance,instance.props,next.props)
+    }
+    //更新属性
+    function updateProps(instance,preProps,nextProps){
+        for(let key in nextProps){
+            //赋值的时候会重新调用update
+            instance.props[key] = nextProps[key]
+        }
+        for(let key in instance.props){
+            if(! (key in nextProps)){
+                delete instance.props[key]
+            }
+        }
+    }
+    //判断属性是否变化
+    function hasChange(preProps,nextPros){
+        for(let key in nextPros){
+            if(nextPros[key] != preProps[key]){
+                return true
+            }
+        }
+        return false
+    }
+    //判断属性是否不同
+    function shouldComponentUpdate(n1,n2){
+        const prevProps = n1.props;
+        const nextProps = n2.props
+        return hasChange(prevProps,nextProps)
+    }
+    //更新组件
+    function updateComponent(n1,n2){
+        //拿到之前的组件
+        const instance = n2.component = n1.component
+        if(shouldComponentUpdate(n1,n2)){
+            instance.next = n2;
+            instance.update() //让effect重新执行
+        }else {
+            instance.vnode = n2
         }
     }
     function render(vnode, container) {
@@ -63,7 +158,6 @@ export function createRenderer(options) {
                 umount(container._vnode)
             }
         } else {
-
             //更新元素
             patch(container._vnode || null, vnode, container)
         }
@@ -207,7 +301,7 @@ export function createRenderer(options) {
             e2--
         }
         if(i>e1){
-            if(i<e1){
+            if(i<e2){
                 while(i<e2){
                     const nextPos = e2+1
                     let anchor = c2.length<=nextPos?null:c2[nextPos].el
@@ -216,7 +310,7 @@ export function createRenderer(options) {
                 }
             }
         }
-        else if(i>e1){
+        else if(i>e2){
             if(i<=e1){
                 while(i<=e1){
                     umount(c1[i])
