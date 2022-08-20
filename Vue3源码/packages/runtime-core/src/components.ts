@@ -45,7 +45,7 @@ const instanceProxy = {
     get(target,key){
         const { data,props} = target
         if(data && hasOwn(data,key)){
-            return props[key]
+            return data[key]
         }else if(props && hasOwn(props,key)){
             return props[key]
         }

@@ -87,6 +87,7 @@ export function createRenderer(options) {
             if(!instance.isMounted){
                 //组件最终渲染的虚拟节点实际上是subTree
                 //调用render会做收集依赖，数据变化则重新调用update
+                // debugger
                 const subTree = render.call(instance.proxy)
                 patch(null,subTree,container,anchor)
                 instance.subTree = subTree

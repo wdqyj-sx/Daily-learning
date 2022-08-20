@@ -1,4 +1,4 @@
-import {isArray,isString} from "@vue/shared"
+import {isArray,isObject,isString} from "@vue/shared"
 
 //创建类型标识
 export const Text = Symbol("Text")
@@ -29,7 +29,7 @@ export const enum ShapeFlags { // vue3提供的形状标识
 
 export function createVNode(type,props = null,children = null){
     //创建虚拟节点
-    let shapeFlags = isString(type)? ShapeFlags.ELEMENT:0
+    let shapeFlags = isString(type)? ShapeFlags.ELEMENT:isObject(type)?ShapeFlags.STATEFUL_COMPONENT:0
     const vnode = {
         __v_isVNode:true,
         type,

@@ -8,13 +8,18 @@
 </head>
 <body>
 
-    <script src="../../../node_modules/vue/dist/vue.global.prod.js"> </script>
-    <!-- <script src="../dist/runtime-dom.global.js"></script> -->
+    <!-- <script src="../../../node_modules/vue/dist/vue.global.prod.js"> </script> -->
+    <script src="../dist/runtime-dom.global.js"></script>
     <div id="app"></div>
     <script>
-        // const {createVNode,render,h} =  VueRuntimeDOM
-        const {render,h} =  Vue
+        const {createVNode,render,h} =  VueRuntimeDOM
+        // const {render,h} =  Vue
         const VueComponent = {
+            props:{
+                name:String,
+                age:Number
+            },
+
             data(){
                 return { name:'zf'}
             },

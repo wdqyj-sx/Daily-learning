@@ -375,7 +375,7 @@ var VueRuntimeDOM = (() => {
     get(target, key) {
       const { data, props } = target;
       if (data && hasOwn(data, key)) {
-        return props[key];
+        return data[key];
       } else if (props && hasOwn(props, key)) {
         return props[key];
       }
@@ -419,7 +419,7 @@ var VueRuntimeDOM = (() => {
     return n1.type === n2.type && n1.key === n2.key;
   }
   function createVNode(type, props = null, children = null) {
-    let shapeFlags = isString(type) ? 1 /* ELEMENT */ : 0;
+    let shapeFlags = isString(type) ? 1 /* ELEMENT */ : isObject(type) ? 4 /* STATEFUL_COMPONENT */ : 0;
     const vnode = {
       __v_isVNode: true,
       type,
