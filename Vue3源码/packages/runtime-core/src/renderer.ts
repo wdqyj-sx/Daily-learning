@@ -38,6 +38,8 @@ export function createRenderer(options) {
         hostRemove(vnode.el)
     }
     function patch(n1, n2, container, anchor = null) {
+        // debugger
+        console.log('sx')
         //判断n1和n2是否相同
         if (n1 && !isSameVNode(n1, n2)) {
             //之前存在节点，但和更新的不同，则删除之前的节点
@@ -61,6 +63,7 @@ export function createRenderer(options) {
     }
     //处理组件
     function processComponent(n1,n2,container,anchor){
+       
         if(n1==null){
             //进入到初始化组件流程
             mountComponent(n2,container,anchor)
@@ -83,6 +86,7 @@ export function createRenderer(options) {
     }
     function setupRenderEffect(instance,container,anchor){
         const componentUpdate = ()=>{
+           
             const {render,data} = instance
             if(!instance.isMounted){
                 //组件最终渲染的虚拟节点实际上是subTree
@@ -93,6 +97,7 @@ export function createRenderer(options) {
                 instance.subTree = subTree
                 instance.isMounted = true
             }else {
+                // debugger
                 //组件挂载过，走更新逻辑
                 let next = instance.next //表示新的虚拟节点
                 if(next){
@@ -107,6 +112,7 @@ export function createRenderer(options) {
         const effect = new ReactiveEffect(componentUpdate)
         let update = instance.update = effect.run.bind(effect)
         update()
+        // componentUpdate()
     }
     //更新属性
     function updateComponentPreRender(instance,next){
@@ -140,12 +146,13 @@ export function createRenderer(options) {
         const prevProps = n1.props;
         const nextProps = n2.props
         return hasChange(prevProps,nextProps)
-    }
+    } 
     //更新组件
     function updateComponent(n1,n2){
         //拿到之前的组件
         const instance = n2.component = n1.component
         if(shouldComponentUpdate(n1,n2)){
+            
             instance.next = n2;
             instance.update() //让effect重新执行
         }else {
@@ -290,7 +297,7 @@ export function createRenderer(options) {
             }
             i++
         }
-        while (e1 >= 0 && e2 >= 0) {
+        while (i <= e1 && i <= e2) {
             const n1 = c1[e1]
             const n2 = c2[e2]
             if (isSameVNode(n1, n2)) {
@@ -302,8 +309,8 @@ export function createRenderer(options) {
             e2--
         }
         if(i>e1){
-            if(i<e2){
-                while(i<e2){
+            if(i<=e2){
+                while(i<=e2){
                     const nextPos = e2+1
                     let anchor = c2.length<=nextPos?null:c2[nextPos].el
                     patch(null,c2[i],el,anchor)

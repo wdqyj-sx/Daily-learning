@@ -40,9 +40,9 @@
 // }
 
 const list = [{ name: 'lx' }, { age: 23 }]
-    for (const val of list) {
-      console.log(val) // 输出{ name: 'lx' }, { age: 23 }
-      for (const key in val) {
+for (const val of list) {
+    console.log(val) // 输出{ name: 'lx' }, { age: 23 }
+    for (const key in val) {
         console.log(val[key]) // 输出 lx,23
-      }
     }
+}

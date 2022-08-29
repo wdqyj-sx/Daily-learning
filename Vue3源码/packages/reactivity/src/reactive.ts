@@ -8,13 +8,14 @@ export function reactive(target){
     if(!isObject(target)){
         return target
     }
+    if(target[ReactiveFlags.IS_REACTIVE]){
+        return target
+    }
     const existing = reactiveMap.get(target)
     if(existing){
         return existing
     }
-    if(target[ReactiveFlags.IS_REACTIVE]){
-        return target
-    }
+    
     //实现最初的proxy
     const proxy = new Proxy(target,baseHandler)
     reactiveMap.set(target,proxy)

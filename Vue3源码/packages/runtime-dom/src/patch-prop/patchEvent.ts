@@ -8,7 +8,7 @@ function createInvoker(preValue){
 
 export function patchEvent(el,eventName,nextValue){
     //查找缓存
-    const invokers = el._vei || (el.vei = {})
+    const invokers = el._vei || (el._vei = {})
     const exitingInvoker = invokers[eventName] 
     if(exitingInvoker && nextValue){
         exitingInvoker.value = nextValue

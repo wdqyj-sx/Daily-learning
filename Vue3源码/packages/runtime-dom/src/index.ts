@@ -2,7 +2,6 @@ import { createRenderer } from "packages/runtime-core/src/renderer"
 import { nodeOps} from "./nodeOps"
 import {patchProp} from "./patchProp"
 
-export * from "@vue/runtime-core"
 
 const renderOptions = {patchProp,...nodeOps}
 
@@ -12,4 +11,4 @@ export function render(vnode,container){
     return render(vnode,container)
 }
 
-export * from "@vue/runtime-core"
+export * from "packages/runtime-core/src/index"

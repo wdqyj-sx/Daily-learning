@@ -55,6 +55,7 @@ const instanceProxy = {
         }
     },
     set(target,key,value,receiver){
+        // debugger
         const {data,props} = target
         if(data && hasOwn(data,key)){
             data[key] = value
@@ -66,6 +67,7 @@ const instanceProxy = {
     }
 }
 export function setupComponent(instance){
+
     let { type,props,children}  = instance.vnode
     let {data,render} = type
     //初始化属性

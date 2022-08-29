@@ -34,6 +34,8 @@ var VueRuntimeDOM = (() => {
   // packages/runtime-dom/src/index.ts
   var src_exports = {};
   __export(src_exports, {
+    Fragment: () => Fragment,
+    Text: () => Text,
     computed: () => computed,
     createRenderer: () => createRenderer,
     createVNode: () => createVNode,
@@ -99,8 +101,8 @@ var VueRuntimeDOM = (() => {
     stop() {
       if (this.active) {
         this.active = false;
+        cleanEffect(this);
       }
-      cleanEffect(this);
     }
   };
   var targetMap = /* @__PURE__ */ new WeakMap();
@@ -186,12 +188,12 @@ var VueRuntimeDOM = (() => {
     if (!isObject(target)) {
       return target;
     }
+    if (target["__v_isReactive" /* IS_REACTIVE */]) {
+      return target;
+    }
     const existing = reactiveMap.get(target);
     if (existing) {
       return existing;
-    }
-    if (target["__v_isReactive" /* IS_REACTIVE */]) {
-      return target;
     }
     const proxy = new Proxy(target, baseHandler);
     reactiveMap.set(target, proxy);
@@ -516,6 +518,7 @@ var VueRuntimeDOM = (() => {
       hostRemove(vnode.el);
     }
     function patch(n1, n2, container, anchor = null) {
+      console.log("sx");
       if (n1 && !isSameVNode(n1, n2)) {
         umount(n1);
         n1 = null;
@@ -718,7 +721,7 @@ var VueRuntimeDOM = (() => {
         }
         i++;
       }
-      while (e1 >= 0 && e2 >= 0) {
+      while (i <= e1 && i <= e2) {
         const n1 = c1[e1];
         const n2 = c2[e2];
         if (isSameVNode(n1, n2)) {
@@ -730,8 +733,8 @@ var VueRuntimeDOM = (() => {
         e2--;
       }
       if (i > e1) {
-        if (i < e2) {
-          while (i < e2) {
+        if (i <= e2) {
+          while (i <= e2) {
             const nextPos = e2 + 1;
             let anchor = c2.length <= nextPos ? null : c2[nextPos].el;
             patch(null, c2[i], el, anchor);
@@ -852,7 +855,7 @@ var VueRuntimeDOM = (() => {
     return invoker;
   }
   function patchEvent(el, eventName, nextValue) {
-    const invokers = el._vei || (el.vei = {});
+    const invokers = el._vei || (el._vei = {});
     const exitingInvoker = invokers[eventName];
     if (exitingInvoker && nextValue) {
       exitingInvoker.value = nextValue;

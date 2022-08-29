@@ -21,14 +21,15 @@
             },
 
             data(){
-                return { name:'zf'}
+                return { name:'zf',age:18}
             },
             render(){
                 return h('button',{
                     onClick:()=>{
-                        this.name = 'jw'
+                        debugger
+                        this.age++
                     }
-                },h('span',this.name))
+                },h('span',null,this.age))
             }
         }
         render(h(VueComponent),app)

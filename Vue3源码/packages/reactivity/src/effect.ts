@@ -38,8 +38,9 @@ export class ReactiveEffect{
     stop(){
         if(this.active){
             this.active = false
+            cleanEffect(this)
         }
-        cleanEffect(this)
+       
     }
 
 }
