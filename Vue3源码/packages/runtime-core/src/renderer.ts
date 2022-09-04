@@ -73,7 +73,7 @@ export function createRenderer(options) {
             updateComponent(n1,n2)
         }
     }
-   
+
     //初始化组件
     function mountComponent(vnode,container,anchor){
         //组件挂在前，需要产生一个组件的实例，组件的状态，组件的属性，组件对应的生命周期
@@ -83,7 +83,7 @@ export function createRenderer(options) {
         setupComponent(instance)
         //给产生一个effect,使之变成响应式
         setupRenderEffect(instance,container,anchor)
-    }
+                }
     function setupRenderEffect(instance,container,anchor){
         const componentUpdate = ()=>{
            
@@ -166,6 +166,7 @@ export function createRenderer(options) {
                 umount(container._vnode)
             }
         } else {
+
             //更新元素
             patch(container._vnode || null, vnode, container)
         }
@@ -309,8 +310,8 @@ export function createRenderer(options) {
             e2--
         }
         if(i>e1){
-            if(i<=e2){
-                while(i<=e2){
+            if(i<e2){
+                while(i<e2){
                     const nextPos = e2+1
                     let anchor = c2.length<=nextPos?null:c2[nextPos].el
                     patch(null,c2[i],el,anchor)
@@ -318,7 +319,7 @@ export function createRenderer(options) {
                 }
             }
         }
-        else if(i>e2){
+        else if(i>e1){
             if(i<=e1){
                 while(i<=e1){
                     umount(c1[i])
@@ -349,6 +350,7 @@ export function createRenderer(options) {
                 }
             }
             // 比较儿子
+            //这里incr接收result
             let incr = getSequence(seq)
             let j = incr.length - 1
             for(let i = toBePatched-1;i>=0;i--){
@@ -377,7 +379,6 @@ export function createRenderer(options) {
         }
     }
     
-
 }
 
 
