@@ -287,6 +287,21 @@ var VueRuntimeDOM = (() => {
   function ref(value) {
     return new RefImpl(value);
   }
+  function proxyRefs(object) {
+    return new Proxy(object, {
+      get(target, key, receiver) {
+        let r = Reflect.get(target, key, receiver);
+        return r.__v_isRef ? r.value : r;
+      },
+      set(target, key, value, receiver) {
+        if (target[key].__v_isRef) {
+          target[key].value = value;
+          return true;
+        }
+        return Reflect.set(target, key, value, receiver);
+      }
+    });
+  }
   function toRef(object, key) {
     return new ObjectRefImpl(object, key);
   }
@@ -375,9 +390,11 @@ var VueRuntimeDOM = (() => {
   };
   var instanceProxy = {
     get(target, key) {
-      const { data, props } = target;
+      const { data, props, setupState } = target;
       if (data && hasOwn(data, key)) {
         return data[key];
+      } else if (setupState && hasOwn(setupState, key)) {
+        return setupState[key];
       } else if (props && hasOwn(props, key)) {
         return props[key];
       }
@@ -387,9 +404,11 @@ var VueRuntimeDOM = (() => {
       }
     },
     set(target, key, value, receiver) {
-      const { data, props } = target;
+      const { data, props, setupState } = target;
       if (data && hasOwn(data, key)) {
         data[key] = value;
+      } else if (setupState && hasOwn(setupState, key)) {
+        setupState[key] = value;
       } else if (props && hasOwn(props, key)) {
         console.warn("props not update");
         return false;
@@ -399,7 +418,7 @@ var VueRuntimeDOM = (() => {
   };
   function setupComponent(instance) {
     let { type, props, children } = instance.vnode;
-    let { data, render: render2 } = type;
+    let { data, render: render2, setup } = type;
     initProps(instance, props);
     instance.proxy = new Proxy(instance, instanceProxy);
     if (data) {
@@ -408,7 +427,21 @@ var VueRuntimeDOM = (() => {
       }
       instance.data = reactive(data.call({}));
     }
-    instance.render = render2;
+    if (setup) {
+      const context = {};
+      const setupResult = setup(instance.props, context);
+      if (isFunction(setupResult)) {
+        instance.render = setupResult;
+      } else if (isObject(setupResult)) {
+        instance.setupState = proxyRefs(setupResult);
+      }
+    }
+    if (!instance.render) {
+      if (render2) {
+        instance.render = render2;
+      } else {
+      }
+    }
   }
 
   // packages/runtime-core/src/createVNode.ts
@@ -442,6 +475,25 @@ var VueRuntimeDOM = (() => {
       vnode.shapeFlags = vnode.shapeFlags | temp;
     }
     return vnode;
+  }
+
+  // packages/runtime-core/src/schedules.ts
+  var queue = /* @__PURE__ */ new Set();
+  var isFlushing = false;
+  var resolvePromise = Promise.resolve();
+  function queueJob(job) {
+    queue.add(job);
+    if (!isFlushing) {
+      isFlushing = true;
+      resolvePromise.then(() => {
+        try {
+          queue.forEach((job2) => job2());
+        } finally {
+          isFlushing = false;
+          queue.clear();
+        }
+      });
+    }
   }
 
   // packages/runtime-core/src/sequence.ts
@@ -518,7 +570,6 @@ var VueRuntimeDOM = (() => {
       hostRemove(vnode.el);
     }
     function patch(n1, n2, container, anchor = null) {
-      console.log("sx");
       if (n1 && !isSameVNode(n1, n2)) {
         umount(n1);
         n1 = null;
@@ -568,7 +619,9 @@ var VueRuntimeDOM = (() => {
           instance.subTree = subTree;
         }
       };
-      const effect2 = new ReactiveEffect(componentUpdate);
+      const effect2 = new ReactiveEffect(componentUpdate, () => {
+        queueJob(instance.update);
+      });
       let update = instance.update = effect2.run.bind(effect2);
       update();
     }
@@ -733,15 +786,15 @@ var VueRuntimeDOM = (() => {
         e2--;
       }
       if (i > e1) {
-        if (i <= e2) {
-          while (i <= e2) {
+        if (i < e2) {
+          while (i < e2) {
             const nextPos = e2 + 1;
             let anchor = c2.length <= nextPos ? null : c2[nextPos].el;
             patch(null, c2[i], el, anchor);
             i++;
           }
         }
-      } else if (i > e2) {
+      } else if (i > e1) {
         if (i <= e1) {
           while (i <= e1) {
             umount(c1[i]);

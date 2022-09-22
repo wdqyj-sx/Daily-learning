@@ -5,9 +5,10 @@ axios.get("https://ncov.dxy.cn/ncovh5/view/pneumonia?from=dxy&source=&link=&shar
         let html = data.data
         let index1 = html.indexOf('[{"provinceName":"台湾","provinceShortName":"台湾",')
         let index2 =html.indexOf('}catch(e){}</script>')
-        console.log(index1,index2)
+        // console.log(index1,index2)
         let mainData = html.slice(index1,index2)
         mainData = JSON.parse(mainData)
+        console.log(mainData)
     }
 })
 .catch(err=>{

@@ -1,5 +1,6 @@
 import { reactive } from "@vue/reactivity"
-import { hasOwn, isFunction } from "@vue/shared"
+import { hasOwn, isFunction, isObject } from "@vue/shared"
+import { proxyRefs } from "packages/reactivity/src/ref"
 
 export function createComponentInstance(vnode){
     let instance = {
@@ -43,10 +44,13 @@ const publicProperties = {
 //做代理
 const instanceProxy = {
     get(target,key){
-        const { data,props} = target
+        const { data,props,setupState} = target
         if(data && hasOwn(data,key)){
             return data[key]
-        }else if(props && hasOwn(props,key)){
+        }else if(setupState && hasOwn(setupState,key)){
+          return setupState[key]
+        }
+        else if(props && hasOwn(props,key)){
             return props[key]
         }
         let getter = publicProperties[key]
@@ -56,10 +60,13 @@ const instanceProxy = {
     },
     set(target,key,value,receiver){
         // debugger
-        const {data,props} = target
+        const {data,props,setupState} = target
         if(data && hasOwn(data,key)){
             data[key] = value
-        }else if(props && hasOwn(props,key)){
+        }else if( setupState && hasOwn(setupState,key)){
+            setupState[key]  = value
+        }
+        else if(props && hasOwn(props,key)){
             console.warn('props not update');
             return false
         }
@@ -69,7 +76,7 @@ const instanceProxy = {
 export function setupComponent(instance){
 
     let { type,props,children}  = instance.vnode
-    let {data,render} = type
+    let {data,render,setup} = type
     //初始化属性
     initProps(instance,props);
     instance.proxy = new Proxy(instance,instanceProxy);
@@ -80,5 +87,22 @@ export function setupComponent(instance){
         //给实例赋予data属性
         instance.data = reactive(data.call({}))
     }
-    instance.render = render
+    if(setup){
+      //setup的第二个参数，包含emit,attrs，slots等
+      const context = {}
+      const setupResult = setup(instance.props,context)
+      if(isFunction(setupResult)){
+        instance.render = setupResult
+      }else if(isObject(setupResult)){
+        instance.setupState = proxyRefs(setupResult)
+      }
+    }
+    if(!instance.render){
+      if(render){
+      instance.render = render
+
+      }else {
+        //模板编译
+      }
+    } 
 }

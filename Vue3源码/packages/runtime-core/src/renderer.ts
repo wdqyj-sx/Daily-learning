@@ -2,8 +2,8 @@ import { isNumber, isString } from "@vue/shared"
 import { ReactiveEffect } from "packages/reactivity/src/effect"
 import { createComponentInstance, setupComponent } from "./components"
 import { isSameVNode, Text, ShapeFlags, createVNode, Fragment } from "./createVNode"
+import { queueJob } from "./schedules"
 import { getSequence } from "./sequence"
-
 export function createRenderer(options) {
     let {
         createElement: hostCreateElement,
@@ -39,7 +39,7 @@ export function createRenderer(options) {
     }
     function patch(n1, n2, container, anchor = null) {
         // debugger
-        console.log('sx')
+        // console.log('sx')
         //判断n1和n2是否相同
         if (n1 && !isSameVNode(n1, n2)) {
             //之前存在节点，但和更新的不同，则删除之前的节点
@@ -83,7 +83,7 @@ export function createRenderer(options) {
         setupComponent(instance)
         //给产生一个effect,使之变成响应式
         setupRenderEffect(instance,container,anchor)
-                }
+      }
     function setupRenderEffect(instance,container,anchor){
         const componentUpdate = ()=>{
            
@@ -109,7 +109,7 @@ export function createRenderer(options) {
                 instance.subTree = subTree
             }
         }
-        const effect = new ReactiveEffect(componentUpdate)
+        const effect = new ReactiveEffect(componentUpdate,()=>{queueJob(instance.update)})
         let update = instance.update = effect.run.bind(effect)
         update()
         // componentUpdate()

@@ -22,10 +22,14 @@
                 return {name:'zf',a:100} // 数据源
             },
             render(){ // render函数返回虚拟节点 决定最终渲染的结果
+                console.log('sx')
                 return h('button',{onClick:()=>{
                     // debugger
-                    console.log('sx')
+                   
                     this.a++
+                    this.a++
+                    this.a++
+                  
                 }}, h('span',this.a))
             }
         }
